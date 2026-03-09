@@ -3,185 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV - Mirror Pro P2P</title>
+    <title>VidYou IPTV - Player</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
-        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { display: flex; align-items: center; padding: 15px 20px; background: #0a0a0a; border-bottom: 2px solid #ff4500; position: relative; z-index: 2000; }
-        .logo { font-size: 1.6rem; font-weight: 900; color: #ff4500; font-style: italic; display: flex; align-items: center; gap: 10px; cursor: default; }
-        .toggle-btn { cursor: pointer; background: #ff4500; color: #000; padding: 2px 8px; border-radius: 5px; font-size: 1rem; transition: 0.3s; font-style: normal; font-weight: bold; }
-        .toggle-btn:hover { background: #fff; }
-        #popup-menu { position: absolute; top: 65px; left: 20px; width: 260px; background: #111; border: 1px solid #ff4500; border-radius: 10px; display: none; z-index: 3000; padding: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-        #popup-menu.show { display: block; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #050505; display: flex; justify-content: center; align-items: center; position: relative; }
-        video { width: 100%; height: 100%; background: #000; display: none; }
-        .placeholder { color: #333; font-weight: 900; letter-spacing: 5px; text-transform: uppercase; text-align: center; font-size: 0.8rem; }
-        .list-item { background: #0d0d0d; padding: 12px; margin: 5px 0; border-radius: 5px; cursor: pointer; border-left: 3px solid #ff4500; font-size: 0.85rem; font-weight: bold; transition: 0.2s; }
-        .list-item:hover { background: #222; border-left-color: #fff; }
-        .action-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 10px; background: #0a0a0a; border-top: 1px solid #222; }
-        .btn-command { background: #111; border: 1px solid #333; color: #fff; padding: 12px 2px; border-radius: 8px; cursor: pointer; font-size: 0.65rem; text-align: center; font-weight: bold; text-transform: uppercase; }
-        .btn-command.active { border-color: #ff4500; color: #ff4500; background: #1a0a00; }
-        .content-area { flex: 1; overflow-y: auto; padding: 15px; background: #000; }
-        .status-bar { padding: 8px 20px; font-size: 0.7rem; color: #888; background: #050505; border-bottom: 1px solid #111; font-weight: bold; }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        header { padding: 15px; background: #0a0a0a; border-bottom: 2px solid #ff4500; text-align: center; color: #ff4500; font-weight: bold; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #050505; }
+        video { width: 100%; height: 100%; }
+        .status { padding: 10px; font-size: 0.8rem; background: #111; color: #888; text-align: center; }
+        .content { flex: 1; overflow-y: auto; padding: 10px; }
+        .item { background: #1a1a1a; padding: 10px; margin: 5px 0; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
-
-<header>
-    <div class="logo">VidYou IPTV <span class="toggle-btn" id="btn-seta" onclick="togglePopup()">▼</span></div>
-    <div id="popup-menu">
-        <div id="agenda-content">
-            <p style="text-align:center; color:#666; font-size: 0.8rem;">Carregando...</p>
-        </div>
+    <header>VIDYOU IPTV</header>
+    <div class="player-container">
+        <video id="video" controls playsinline></video>
     </div>
-</header>
-
-<div class="player-container">
-    <div id="placeholder" class="placeholder">Selecione um conteúdo ou abra a Galeria</div>
-    <video id="main-video" controls playsinline crossorigin="anonymous"></video>
-</div>
-
-<div class="status-bar" id="info-stream">SISTEMA P2P INICIALIZADO</div>
-
-<div class="action-bar">
-    <button class="btn-command" onclick="showCategory('canais', this)">CANAIS</button>
-    <button class="btn-command" onclick="showCategory('filmes', this)">FILMES</button>
-    <button class="btn-command" onclick="showCategory('series', this)">SÉRIES</button>
-    <button class="btn-command" onclick="abrirGaleria(this)">GALERIA</button>
-</div>
-
-<div class="content-area" id="playlist-container"></div>
-<input type="file" id="file-gallery" style="display:none" accept="video/*">
+    <div class="status" id="status">AGUARDANDO LISTA...</div>
+    <div class="content" id="lista"></div>
 
 <script>
-    const video = document.getElementById('main-video');
-    const container = document.getElementById('playlist-container');
-    const infoStream = document.getElementById('info-stream');
-    const placeholder = document.getElementById('placeholder');
-    let listData = { canais: [], filmes: [], series: [] };
-    let hls = null;
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const listaContainer = document.getElementById('lista');
 
-    function loadFromStorage() {
-        const savedData = localStorage.getItem('vidyou_lista_salva');
-        if (savedData) {
-            listData = JSON.parse(savedData);
-            atualizarMenuPopup();
-            infoStream.innerText = "DADOS CARREGADOS DA MEMÓRIA";
-        }
-    }
-
-    async function processarLista(url) {
+    async function carregarLista(url) {
         try {
-            infoStream.innerText = "Sincronizando...";
-            // Proxy configurado para evitar erro de CORS
-            const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(url);
-            const response = await fetch(proxyUrl);
-            
-            if (!response.ok) throw new Error("Não foi possível acessar a URL");
-            
+            status.innerText = "SINCRONIZANDO...";
+            // O segredo está aqui: o proxy ajuda a evitar o erro de CORS
+            const proxy = "https://corsproxy.io/?";
+            const response = await fetch(proxy + encodeURIComponent(url));
             const text = await response.text();
-            const lines = text.split('\n');
             
-            listData = { canais: [], filmes: [], series: [] };
-
+            const lines = text.split('\n');
+            listaContainer.innerHTML = '';
+            
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].startsWith('#EXTINF')) {
-                    const info = lines[i].toLowerCase();
-                    const nome = lines[i].split(',')[1] || "Sem Nome";
-                    const streamUrl = lines[i+1]?.trim();
-                    if(!streamUrl) continue;
-
-                    const item = { nome, url: streamUrl };
-                    if (info.includes('filme') || streamUrl.includes('/movie/')) listData.filmes.push(item);
-                    else if (info.includes('serie') || streamUrl.includes('/series/')) listData.series.push(item);
-                    else listData.canais.push(item);
+                    const nome = lines[i].split(',')[1] || "Canal";
+                    const stream = lines[i+1]?.trim();
+                    if (stream) {
+                        const div = document.createElement('div');
+                        div.className = 'item';
+                        div.innerText = nome;
+                        div.onclick = () => darPlay(stream, nome);
+                        listaContainer.appendChild(div);
+                    }
                 }
             }
-
-            localStorage.setItem('vidyou_lista_salva', JSON.stringify(listData));
-            atualizarMenuPopup();
-            infoStream.innerText = "Lista Atualizada!";
-            infoStream.style.color = "#00ff00";
-            setTimeout(() => { infoStream.innerText = "SISTEMA P2P PRONTO"; infoStream.style.color = "#888"; }, 3000);
+            status.innerText = "LISTA CARREGADA!";
         } catch (e) {
-            console.error(e);
-            infoStream.innerText = "Erro: Verifique a URL ou CORS.";
-            loadFromStorage();
+            status.innerText = "ERRO DE CONEXÃO (CORS/URL)";
         }
     }
 
-    async function verificarParametroDeEntrada() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const novaListaUrl = urlParams.get('lista');
-        if (novaListaUrl) {
-            await processarLista(decodeURIComponent(novaListaUrl));
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-            loadFromStorage();
-        }
-    }
-
-    function atualizarMenuPopup() {
-        document.getElementById('agenda-content').innerHTML = `
-            <div class="list-item" onclick="showCategory('canais')">📺 CANAIS (${listData.canais.length})</div>
-            <div class="list-item" onclick="showCategory('filmes')">🎬 FILMES (${listData.filmes.length})</div>
-            <div class="list-item" onclick="showCategory('series')">🍿 SÉRIES (${listData.series.length})</div>
-        `;
-    }
-
-    function togglePopup() {
-        const menu = document.getElementById('popup-menu');
-        const seta = document.getElementById('btn-seta');
-        const isVisible = menu.classList.toggle('show');
-        seta.innerText = isVisible ? '▲' : '▼';
-    }
-
-    function showCategory(cat, btn) {
-        if(btn) { document.querySelectorAll('.btn-command').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
-        container.innerHTML = '';
-        const items = listData[cat] || [];
-        if(items.length === 0) container.innerHTML = '<p style="color:#444; padding:20px;">Nenhum item encontrado.</p>';
-        items.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'list-item';
-            div.innerHTML = `<span></span>`;
-            div.querySelector('span').textContent = item.nome;
-            div.onclick = () => playStream(item.url, item.nome);
-            container.appendChild(div);
-        });
-        if(document.getElementById('popup-menu').classList.contains('show')) togglePopup();
-    }
-
-    function playStream(url, nome) {
-        placeholder.style.display = 'none';
-        video.style.display = 'block';
-        infoStream.innerText = "REPRODUZINDO: " + nome;
-        if (hls) { hls.destroy(); hls = null; }
-        if (Hls.isSupported() && (url.includes('.m3u8') || url.includes('.m3u')) && !url.startsWith('blob:')) {
-            hls = new Hls({ maxBufferLength: 30, enableWorker: true, lowLatencyMode: true });
+    function darPlay(url, nome) {
+        status.innerText = "REPRODUZINDO: " + nome;
+        if (Hls.isSupported()) {
+            const hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-            hls.on(Hls.Events.ERROR, (e, data) => { if(data.fatal) hls.recoverMediaError(); });
         } else {
             video.src = url;
-            video.load();
-            video.play().catch(err => console.log("Erro de reprodução"));
+            video.play();
         }
     }
 
-    function abrirGaleria(btn) {
-        document.querySelectorAll('.btn-command').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('file-gallery').click();
-    }
-
-    document.getElementById('file-gallery').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) playStream(URL.createObjectURL(file), "Arquivo: " + file.name);
-    });
-
-    window.onload = verificarParametroDeEntrada;
+    window.onload = () => {
+        const params = new URLSearchParams(window.location.search);
+        const urlLista = params.get('lista');
+        if (urlLista) carregarLista(decodeURIComponent(urlLista));
+    };
 </script>
 </body>
 </html>
