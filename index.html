@@ -73,7 +73,7 @@
     async function processarLista(url) {
         try {
             infoStream.innerText = "Sincronizando...";
-            // Proxy para evitar erro de CORS
+            // Proxy configurado para evitar erro de CORS
             const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(url);
             const response = await fetch(proxyUrl);
             
@@ -104,6 +104,7 @@
             infoStream.style.color = "#00ff00";
             setTimeout(() => { infoStream.innerText = "SISTEMA P2P PRONTO"; infoStream.style.color = "#888"; }, 3000);
         } catch (e) {
+            console.error(e);
             infoStream.innerText = "Erro: Verifique a URL ou CORS.";
             loadFromStorage();
         }
