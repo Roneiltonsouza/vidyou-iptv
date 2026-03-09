@@ -61,7 +61,6 @@
     let listData = { canais: [], filmes: [], series: [] };
     let hls = null;
 
-    // 1. Carregamento Seguro
     function loadFromStorage() {
         const savedData = localStorage.getItem('vidyou_lista_salva');
         if (savedData) {
@@ -71,13 +70,12 @@
         }
     }
 
-    // 2. Parser da Lista (P2P/M3U) melhorado
     async function processarLista(url) {
         try {
             infoStream.innerText = "Sincronizando...";
-            
-            // Tenta buscar a lista (Pode ser bloqueado por CORS dependendo da origem)
-            const response = await fetch(url);
+            // Proxy para evitar erro de CORS
+            const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(url);
+            const response = await fetch(proxyUrl);
             
             if (!response.ok) throw new Error("Não foi possível acessar a URL");
             
@@ -94,7 +92,6 @@
                     if(!streamUrl) continue;
 
                     const item = { nome, url: streamUrl };
-                    // Classificação otimizada
                     if (info.includes('filme') || streamUrl.includes('/movie/')) listData.filmes.push(item);
                     else if (info.includes('serie') || streamUrl.includes('/series/')) listData.series.push(item);
                     else listData.canais.push(item);
@@ -103,27 +100,20 @@
 
             localStorage.setItem('vidyou_lista_salva', JSON.stringify(listData));
             atualizarMenuPopup();
-            infoStream.innerText = "Lista Atualizada com Sucesso!";
+            infoStream.innerText = "Lista Atualizada!";
             infoStream.style.color = "#00ff00";
-            setTimeout(() => { 
-                infoStream.innerText = "SISTEMA P2P PRONTO"; 
-                infoStream.style.color = "#888";
-            }, 3000);
+            setTimeout(() => { infoStream.innerText = "SISTEMA P2P PRONTO"; infoStream.style.color = "#888"; }, 3000);
         } catch (e) {
-            console.error(e);
             infoStream.innerText = "Erro: Verifique a URL ou CORS.";
             loadFromStorage();
         }
     }
 
-    // 3. Verificador de Entrada (URL Param)
     async function verificarParametroDeEntrada() {
         const urlParams = new URLSearchParams(window.location.search);
         const novaListaUrl = urlParams.get('lista');
-
         if (novaListaUrl) {
             await processarLista(decodeURIComponent(novaListaUrl));
-            // Limpa a URL para não reprocessar no refresh
             window.history.replaceState({}, document.title, window.location.pathname);
         } else {
             loadFromStorage();
@@ -146,14 +136,10 @@
     }
 
     function showCategory(cat, btn) {
-        if(btn) {
-            document.querySelectorAll('.btn-command').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
+        if(btn) { document.querySelectorAll('.btn-command').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
         container.innerHTML = '';
         const items = listData[cat] || [];
         if(items.length === 0) container.innerHTML = '<p style="color:#444; padding:20px;">Nenhum item encontrado.</p>';
-
         items.forEach(item => {
             const div = document.createElement('div');
             div.className = 'list-item';
@@ -169,9 +155,7 @@
         placeholder.style.display = 'none';
         video.style.display = 'block';
         infoStream.innerText = "REPRODUZINDO: " + nome;
-
         if (hls) { hls.destroy(); hls = null; }
-
         if (Hls.isSupported() && (url.includes('.m3u8') || url.includes('.m3u')) && !url.startsWith('blob:')) {
             hls = new Hls({ maxBufferLength: 30, enableWorker: true, lowLatencyMode: true });
             hls.loadSource(url);
