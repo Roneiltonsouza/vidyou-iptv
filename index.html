@@ -4,205 +4,129 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VidYou IPTV PRO</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* CABEÇALHO ORIGINAL */
-        header { 
-            padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
-            background: linear-gradient(90deg, #4b0082, #ff4500); 
-            border-bottom: 2px solid #ff4500; z-index: 100;
-        }
-        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
-
-        /* CONTAINER DO PLAYER (FULLSCREEN) */
-        #player-fullscreen-wrapper { 
-            position: relative; width: 100%; flex: 1; background: #000; 
-            display: flex; align-items: center; justify-content: center;
-        }
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-
-        /* SETA COM EFEITO DE SUMIR */
-        .seta-canais {
-            position: absolute; top: 20px; left: 20px; z-index: 2147483647;
-            background: rgba(0, 0, 0, 0.7); color: #ff4500; border: 2px solid #ff4500;
-            width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
-            opacity: 1;
-        }
-        .seta-canais.invisivel { opacity: 0; pointer-events: none; }
-
-        /* GAVETA LATERAL */
-        #gaveta {
-            position: absolute; top: 0; left: -300px; width: 280px; height: 100%;
-            background: rgba(10, 10, 10, 0.98); z-index: 2147483647; transition: 0.4s;
-            border-right: 3px solid #ff4500; overflow-y: auto; display: flex; flex-direction: column;
-        }
-        #gaveta.ativa { left: 0; }
-
-        /* LISTAS SALVAS E CANAIS */
-        #secao-listas-salvas { background: #1a1a1a; padding: 10px; border-bottom: 2px solid #333; max-height: 180px; overflow-y: auto; }
-        .item-lista-salva { padding: 10px; background: #333; margin-bottom: 5px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; color: #ffd700; border-left: 3px solid #ff4500; }
-        
-        #itens-canais { flex: 1; overflow-y: auto; }
-        .canal-item { padding: 10px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
-        .canal-logo { width: 45px; height: 45px; border-radius: 5px; object-fit: contain; background: #fff; flex-shrink: 0; }
-        
-        .btn-fs-interior {
-            position: absolute; bottom: 20px; right: 20px; z-index: 2147483646;
-            background: rgba(255, 69, 0, 0.8); color: white; border: none;
-            padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;
-            transition: opacity 0.5s;
-        }
-        .btn-fs-interior.invisivel { opacity: 0; pointer-events: none; }
+        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { padding: 15px; background: #0a0a0a; border-bottom: 2px solid #ff4500; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 900; color: #ff4500; }
+        .gallery-btn { cursor: pointer; background: #ff4500; color: #000; padding: 5px 10px; border-radius: 5px; font-weight: bold; font-size: 0.9rem; border: none; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; }
+        video { width: 100%; height: 100%; outline: none; }
+        .status-bar { padding: 10px; font-size: 0.75rem; background: #111; color: #ff4500; text-transform: uppercase; border-bottom: 1px solid #222; text-align: center; }
+        .content-area { flex: 1; overflow-y: auto; padding: 10px; background: #050505; }
+        .list-item { background: #111; padding: 15px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; border-left: 4px solid #ff4500; transition: 0.2s; }
+        .list-item:active { background: #ff4500; color: #000; }
+        .category-tabs { display: flex; background: #0a0a0a; padding: 5px; gap: 5px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: #1a1a1a; color: #fff; font-weight: bold; border-radius: 4px; }
+        .tab-btn.active { background: #ff4500; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn-header" onclick="toggleFS()">⛶ TELA CHEIA</button>
-        <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 ABRIR</button>
-    </div>
-    <input type="file" id="file-input" style="display:none" onchange="carregarLocal(event)">
+    <div class="logo">VIDYOU IPTV PRO</div>
+    <button class="gallery-btn" onclick="document.getElementById('file-input').click()">📁 ABRIR GALERIA</button>
+    <input type="file" id="file-input" style="display:none" accept="video/*">
 </header>
 
-<div id="player-fullscreen-wrapper">
-    <video id="vid" controls playsinline></video>
-    
-    <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
-    
-    <div id="gaveta">
-        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" 
-             onclick="fecharGaveta()">FECHAR CANAIS X</div>
-        
-        <div id="secao-listas-salvas">
-            <div style="font-size: 0.75rem; color: #888; margin-bottom: 8px; text-transform: uppercase;">Minhas Listas:</div>
-            <div id="container-listas-storage"></div>
-        </div>
+<div class="player-container">
+    <video id="main-video" controls playsinline></video>
+</div>
+<div class="status-bar" id="status">Aguardando Lista ou Arquivo Local...</div>
 
-        <div id="itens-canais">
-            <p style="padding:20px; color:#666; font-size: 0.8rem; text-align: center;">Selecione uma lista ou abra pelo painel.</p>
-        </div>
-    </div>
-
-    <button class="btn-fs-interior" id="botaoFS" onclick="toggleFS()">⛶ MODO TV</button>
+<div class="category-tabs">
+    <button class="tab-btn active" onclick="render('canais', this)">CANAIS</button>
+    <button class="tab-btn" onclick="render('filmes', this)">FILMES</button>
+    <button class="tab-btn" onclick="render('series', this)">SÉRIES</button>
 </div>
 
+<div class="content-area" id="lista"></div>
+
 <script>
-    const video = document.getElementById('vid');
-    const wrapper = document.getElementById('player-fullscreen-wrapper');
-    const seta = document.getElementById('botaoSeta');
-    const btnFS = document.getElementById('botaoFS');
-    let hls = new Hls();
-    let listaCanais = [];
-    let timerUI;
+    const video = document.getElementById('main-video');
+    const status = document.getElementById('status');
+    const listaDiv = document.getElementById('lista');
+    const fileInput = document.getElementById('file-input');
+    
+    let dados = { canais: [], filmes: [], series: [] };
+    let hls = null;
 
-    function resetTimer() {
-        seta.classList.remove('invisivel');
-        btnFS.classList.remove('invisivel');
-        clearTimeout(timerUI);
-        timerUI = setTimeout(() => {
-            if(!document.getElementById('gaveta').classList.contains('ativa')) {
-                seta.classList.add('invisivel');
-                btnFS.classList.add('invisivel');
-            }
-        }, 5000);
-    }
-
-    wrapper.addEventListener('mousemove', resetTimer);
-    wrapper.addEventListener('touchstart', resetTimer);
-    wrapper.addEventListener('click', resetTimer);
-
-    function toggleFS() {
-        if (!document.fullscreenElement) {
-            if (wrapper.requestFullscreen) wrapper.requestFullscreen();
-            else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
-        } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-        }
-    }
-
-    function abrirGaveta() {
-        document.getElementById('gaveta').classList.add('ativa');
-        carregarListasDoStorage();
-    }
-
-    function fecharGaveta() {
-        document.getElementById('gaveta').classList.remove('ativa');
-        resetTimer();
-    }
-
-    function carregarListasDoStorage() {
-        const listas = JSON.parse(localStorage.getItem('v-listas') || '[]');
-        const container = document.getElementById('container-listas-storage');
-        container.innerHTML = listas.length ? listas.map(l => `
-            <div class="item-lista-salva" onclick="importarM3U('${l.url}')">${l.nome}</div>
-        `).join('') : "<small>Nenhuma lista salva.</small>";
-    }
-
-    async function importarM3U(url) {
-        try {
-            const res = await fetch(url);
-            const text = await res.text();
-            const lines = text.split('\n');
-            listaCanais = [];
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].includes('#EXTINF')) {
-                    const nome = lines[i].split(',')[1] || "Canal";
-                    const logoMatch = lines[i].match(/tvg-logo="([^"]+)"/);
-                    const logo = logoMatch ? logoMatch[1] : 'https://via.placeholder.com/45?text=TV';
-                    const link = lines[i+1]?.trim();
-                    if (link && link.startsWith('http')) listaCanais.push({ nome, logo, link });
-                }
-            }
-            renderizarCanais();
-            document.getElementById('gaveta').classList.add('ativa');
-        } catch (e) { console.error("Erro:", e); }
-    }
-
-    function renderizarCanais() {
-        document.getElementById('itens-canais').innerHTML = listaCanais.map((c, i) => `
-            <div class="canal-item" onclick="tocarCanal(${i})">
-                <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
-                <span>${c.nome}</span>
-            </div>
-        `).join('');
-    }
-
-    function tocarCanal(i) {
-        const url = listaCanais[i].link;
-        if (hls) hls.destroy();
-        if (url.includes('.m3u8')) {
-            hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else {
-            video.src = url; video.play();
-        }
-        fecharGaveta();
-    }
-
-    function carregarLocal(e) {
+    // Lógica para abrir vídeo do celular
+    fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            if (hls) hls.destroy();
-            video.src = URL.createObjectURL(file);
+            const fileURL = URL.createObjectURL(file);
+            play(fileURL, "Arquivo Local: " + file.name);
+        }
+    });
+
+    async function carregarM3U(url) {
+        try {
+            status.innerText = "Sincronizando Conteúdo...";
+            const response = await fetch(url);
+            const text = await response.text();
+            
+            dados = { canais: [], filmes: [], series: [] };
+            const linhas = text.split('\n');
+
+            for (let i = 0; i < linhas.length; i++) {
+                if (linhas[i].startsWith('#EXTINF')) {
+                    const info = linhas[i].toLowerCase();
+                    const nome = linhas[i].split(',')[1] || "Sem nome";
+                    const link = linhas[i+1]?.trim();
+                    if (!link) continue;
+
+                    const item = { nome, link };
+                    if (info.includes('filme')) dados.filmes.push(item);
+                    else if (info.includes('serie')) dados.series.push(item);
+                    else dados.canais.push(item);
+                }
+            }
+            status.innerText = "Sincronizado com Sucesso!";
+            render('canais');
+        } catch (e) {
+            status.innerText = "Erro ao carregar lista.";
+        }
+    }
+
+    function render(cat, btn) {
+        if(btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        listaDiv.innerHTML = '';
+        dados[cat].forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.innerText = item.nome;
+            div.onclick = () => play(item.link, item.nome);
+            listaDiv.appendChild(div);
+        });
+    }
+
+    function play(url, nome) {
+        status.innerText = "Reproduzindo: " + nome;
+        if (hls) hls.destroy();
+        
+        // Verifica se é um arquivo local (blob) ou stream
+        if (url.startsWith('blob:')) {
+            video.src = url;
+            video.play();
+        } else if (Hls.isSupported() && url.includes('m3u8')) {
+            hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else {
+            video.src = url;
             video.play();
         }
     }
 
-    // A única adição feita foi este bloco abaixo:
-    window.onload = function() {
-        const params = new URLSearchParams(window.location.search);
-        const listaUrl = params.get('lista');
-        if (listaUrl) {
-            importarM3U(decodeURIComponent(listaUrl));
-        }
-        resetTimer();
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const listaUrl = urlParams.get('lista');
+        if (listaUrl) carregarM3U(decodeURIComponent(listaUrl));
     };
 </script>
 </body>
