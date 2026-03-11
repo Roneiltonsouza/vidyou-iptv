@@ -59,8 +59,8 @@
 </div>
 
 <script>
-    // URL RAW DO SEU GITHUB - TROQUE PELO SEU LINK
-    const URL_GITHUB = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/lista.txt";
+    // URL CONFIGURADA PARA O SEU REPOSITÓRIO
+    const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
@@ -71,12 +71,17 @@
 
     async function buscarLista() {
         try {
-            const res = await fetch(URL_GITHUB + "?t=" + Date.now());
-            const text = await res.text();
-            if(text.includes("#EXTM3U")) {
-                parseM3U(text);
+            // 1. Pega o link que o painel enviou para o arquivo lista.txt
+            const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
+            const linkReal = (await resLink.text()).trim();
+            
+            // 2. Só tenta carregar se for um link de verdade (começando com http)
+            if (linkReal.startsWith("http")) {
+                const resM3U = await fetch(linkReal);
+                const text = await resM3U.text();
+                if(text.includes("#EXTM3U")) parseM3U(text);
             }
-        } catch (e) { /* Silencioso */ }
+        } catch (e) { console.log("Aguardando lista..."); }
     }
 
     function parseM3U(text) {
@@ -134,7 +139,7 @@
 
     window.onload = () => {
         buscarLista();
-        setInterval(buscarLista, 300000); // Atualiza a cada 5 min
+        setInterval(buscarLista, 60000); // Checa se você enviou lista nova a cada 1 min
     };
 </script>
 </body>
