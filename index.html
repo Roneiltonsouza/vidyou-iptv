@@ -32,7 +32,7 @@
 <div class="player-container">
     <video id="main-video" controls playsinline></video>
 </div>
-<div class="status-bar" id="status">Aguardando Lista...</div>
+<div class="status-bar" id="status">Aguardando Ativação do Painel...</div>
 
 <div class="category-tabs">
     <button class="tab-btn active" onclick="render('canais', this)">CANAIS</button>
@@ -51,18 +51,13 @@
     let dados = { canais: [], filmes: [], series: [] };
     let hls = null;
 
-    // --- PERMISSÃO PARA RECEBER DO PAINEL (POSTMESSAGE) ---
+    // ESCUTA O COMANDO DE ATIVAÇÃO QUE VEM DO PAINEL
     window.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'salvarLista') {
-            const conteudoM3U = event.data.conteudo;
-            const nomeLista = event.data.nome;
-            
-            // Lock: Salva no navegador para não sumir
-            localStorage.setItem('iptv_lista_salva', conteudoM3U);
-            localStorage.setItem('iptv_nome_lista', nomeLista);
-            
-            processarM3U(conteudoM3U);
-            status.innerText = "Lista: " + nomeLista + " Sincronizada!";
+        if (event.data && event.data.type === 'ativarLista') {
+            const conteudo = event.data.conteudo;
+            localStorage.setItem('vidyou_cache_lista', conteudo); // Lock para não esquecer
+            processarTextoM3U(conteudo);
+            status.innerText = "Lista Ativada: " + event.data.nome;
         }
     });
 
@@ -74,8 +69,7 @@
         }
     });
 
-    // Função que processa o texto da lista M3U
-    function processarM3U(text) {
+    function processarTextoM3U(text) {
         dados = { canais: [], filmes: [], series: [] };
         const linhas = text.split('\n');
         for (let i = 0; i < linhas.length; i++) {
@@ -84,26 +78,13 @@
                 const nome = linhas[i].split(',')[1] || "Sem nome";
                 const link = linhas[i+1]?.trim();
                 if (!link) continue;
-
                 const item = { nome, link };
-                if (info.includes('movie') || info.includes('filme')) dados.filmes.push(item);
+                if (info.includes('filme')) dados.filmes.push(item);
                 else if (info.includes('serie')) dados.series.push(item);
                 else dados.canais.push(item);
             }
         }
         render('canais');
-    }
-
-    async function carregarM3U(url) {
-        try {
-            status.innerText = "Sincronizando...";
-            const response = await fetch(url);
-            const text = await response.text();
-            processarM3U(text);
-            status.innerText = "Sincronizado!";
-        } catch (e) {
-            status.innerText = "Erro ao carregar lista.";
-        }
     }
 
     function render(cat, btn) {
@@ -112,9 +93,6 @@
             btn.classList.add('active');
         }
         listaDiv.innerHTML = '';
-        if(dados[cat].length === 0) {
-            listaDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#555;">Nenhum conteúdo nesta categoria</div>';
-        }
         dados[cat].forEach(item => {
             const div = document.createElement('div');
             div.className = 'list-item';
@@ -127,11 +105,10 @@
     function play(url, nome) {
         status.innerText = "Reproduzindo: " + nome;
         if (hls) hls.destroy();
-        
         if (url.startsWith('blob:')) {
             video.src = url;
             video.play();
-        } else if (Hls.isSupported() && (url.includes('m3u8') || url.includes('.ts'))) {
+        } else if (Hls.isSupported() && url.includes('m3u8')) {
             hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(video);
@@ -143,16 +120,8 @@
     }
 
     window.onload = () => {
-        // Tenta carregar do Lock (Salvo anteriormente)
-        const salva = localStorage.getItem('iptv_lista_salva');
-        if (salva) {
-            processarM3U(salva);
-            status.innerText = "Lista Salva Carregada";
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const listaUrl = urlParams.get('lista');
-        if (listaUrl) carregarM3U(decodeURIComponent(listaUrl));
+        const salvo = localStorage.getItem('vidyou_cache_lista');
+        if (salvo) processarTextoM3U(salvo);
     };
 </script>
 </body>
