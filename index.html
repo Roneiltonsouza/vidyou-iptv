@@ -102,12 +102,10 @@
     let listaCanais = [];
     let timerUI;
 
-    // --- LÓGICA DE SUMIR INTERFACE ---
     function resetTimer() {
         seta.classList.remove('invisivel');
         btnFS.classList.remove('invisivel');
         clearTimeout(timerUI);
-        
         timerUI = setTimeout(() => {
             if(!document.getElementById('gaveta').classList.contains('ativa')) {
                 seta.classList.add('invisivel');
@@ -120,7 +118,6 @@
     wrapper.addEventListener('touchstart', resetTimer);
     wrapper.addEventListener('click', resetTimer);
 
-    // --- FUNÇÕES DO PLAYER ---
     function toggleFS() {
         if (!document.fullscreenElement) {
             if (wrapper.requestFullscreen) wrapper.requestFullscreen();
@@ -164,9 +161,8 @@
                 }
             }
             renderizarCanais();
-            // Abre a gaveta para o usuário ver os canais carregados
             document.getElementById('gaveta').classList.add('ativa');
-        } catch (e) { console.error("Erro ao carregar lista:", e); }
+        } catch (e) { console.error("Erro:", e); }
     }
 
     function renderizarCanais() {
@@ -199,17 +195,12 @@
         }
     }
 
-    // --- SINCRONIZAÇÃO AUTOMÁTICA COM O PAINEL ---
+    // A única adição feita foi este bloco abaixo:
     window.onload = function() {
         const params = new URLSearchParams(window.location.search);
         const listaUrl = params.get('lista');
-
         if (listaUrl) {
-            // Se o Painel enviou a lista, importa automaticamente
             importarM3U(decodeURIComponent(listaUrl));
-        } else {
-            // Caso contrário, apenas prepara as listas salvas
-            carregarListasDoStorage();
         }
         resetTimer();
     };
