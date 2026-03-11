@@ -2,36 +2,83 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VidYou IPTV PRO</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; height: 100vh; overflow: hidden; }
-        #player-fullscreen-wrapper { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { 
+            padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
+            background: linear-gradient(90deg, #4b0082, #ff4500); 
+            border-bottom: 2px solid #ff4500; z-index: 100;
+        }
+        .header-right { display: flex; gap: 10px; }
+        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+
+        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; }
-        #gaveta { position: absolute; top: 0; left: -300px; width: 280px; height: 100%; background: #111; z-index: 100; transition: 0.4s; }
+
+        .seta-canais {
+            position: absolute; top: 20px; left: 20px; z-index: 9999;
+            background: rgba(0,0,0,0.8); color: #ff4500; border: 2px solid #ff4500;
+            width: 50px; height: 50px; border-radius: 50%; display: flex; 
+            align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        #gaveta { 
+            position: absolute; top: 0; left: -300px; width: 280px; height: 100%; 
+            background: rgba(10,10,10,0.98); z-index: 10000; transition: 0.4s; 
+            border-right: 3px solid #ff4500; overflow-y: auto; 
+        }
         #gaveta.ativa { left: 0; }
-        .canal-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; }
+        .canal-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; }
     </style>
 </head>
 <body>
-<div id="player-fullscreen-wrapper">
+
+<header>
+    <div style="font-weight: bold;">VidYou IPTV</div>
+    <div class="header-right">
+        <button class="btn-header" onclick="toggleFS()">⛶ TELA CHEIA</button>
+        <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 ABRIR</button>
+    </div>
+    <input type="file" id="file-input" style="display:none" onchange="carregarLocal(event)">
+</header>
+
+<div id="player-wrapper">
     <video id="vid" controls playsinline></video>
+    <div class="seta-canais" onclick="document.getElementById('gaveta').classList.add('ativa')">▼</div>
+    
     <div id="gaveta">
-        <div style="padding:15px; background:#ff4500; text-align:center; cursor:pointer" onclick="document.getElementById('gaveta').classList.remove('ativa')">FECHAR</div>
+        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; text-align:center; cursor:pointer" 
+             onclick="document.getElementById('gaveta').classList.remove('ativa')">FECHAR</div>
         <div id="itens-canais"></div>
     </div>
 </div>
+
 <script>
     const video = document.getElementById('vid');
     let hls = new Hls();
-    function limparTudo() {
-        document.getElementById('itens-canais').innerHTML = '<p>Lista removida.</p>';
-        if (hls) hls.destroy();
-        video.src = "";
+
+    function toggleFS() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
     }
+
     async function importar(url) {
-        const res = await fetch(url);
-        const text = await res.text();
+        try {
+            const res = await fetch(url);
+            const text = await res.text();
+            localStorage.setItem('ultima-lista', url);
+            renderizar(text);
+        } catch(e) { alert("Erro ao carregar lista"); }
+    }
+
+    function renderizar(text) {
         const lines = text.split('\n');
         let html = '';
         lines.forEach((l, i) => {
@@ -44,15 +91,29 @@
         document.getElementById('itens-canais').innerHTML = html;
         document.getElementById('gaveta').classList.add('ativa');
     }
+
     function tocar(url) {
         if (hls) hls.destroy();
         hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        document.getElementById('gaveta').classList.remove('ativa');
     }
-    window.onload = () => {
+
+    function carregarLocal(e) { 
+        const f = e.target.files[0]; 
+        if(f) { video.src = URL.createObjectURL(f); video.play(); } 
+    }
+
+    window.onload = async () => {
         const p = new URLSearchParams(window.location.search);
-        if (p.get('comando') === 'limpar') limparTudo();
-        else if (p.get('lista')) importar(decodeURIComponent(p.get('lista')));
+        const url = p.get('lista');
+        
+        if (url) {
+            importar(decodeURIComponent(url));
+        } else {
+            const salva = localStorage.getItem('ultima-lista');
+            if (salva) importar(salva);
+        }
     };
 </script>
 </body>
