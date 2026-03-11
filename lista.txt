@@ -1,0 +1,25 @@
+#EXTM3U
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/pt/8/89/Logotipo_da_RedeTV%21.png" group-title="TV Aberta",Rede TV
+https://tv01.zas.media:1936/redetvparana/redetvparana/chunklist_w318899307.m3u8
+#EXTINF:-1 tvg-id="" tvg-logo="https://i.imgur.com/kG2br4g.png" group-title="Brasil: variedades",Bem Mais TV | RJ | Brasil
+https://video09.logicahost.com.br/bemmaistv01/bemmaistv01/playlist.m3u8
+#EXTINF:-1 tvg-id="CentralTVBrasil" tvg-logo="https://i.imgur.com/LNLVIwF.png" group-title="Brasil: variedades",Central TV Brasil
+https://tv01.zas.media:1936/centraltvweb/centraltvweb/chunklist.m3u8
+#EXTINF:-1 tvg-logo="https://coletiva.net/sites/coletiva/assets/images/coletiva_tv.png" group-title="Brasil: variedades",Coletiva TV | Brasil
+https://video02.logicahost.com.br/coletivatv/coletivatv/playlist.m3u8
+#EXTINF:-1 tvg-id="combrasil.br" tvg-logo="https://combrasiltv.com.br/wp-content/uploads/2022/07/Logo-COMBR.png" group-title="Brasil: variedades",Com Brasil
+https://br5093.streamingdevideo.com.br/abc/abc/master.m3u8
+#EXTINF:-1 tvg-id="demaistv.br" tvg-logo="https://pbr-str.srvsite.com/arquivos/9046/cabecalho-9046-20230725105112.png" group-title="Brasil: variedades",D+ TV | Brasil
+https://stmv1.samcast.com.br/demaistv6503/demaistv6503/playlist.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/1vnp5N1.png" group-title="Brasil: variedades",Demand Africa | Brasil
+https://demandafrica-por-samsungbr.amagi.tv/playlist.m3u8
+#EXTINF:-1 tvg-id="ISTV.br" tvg-logo="https://i.imgur.com/ZcHrNoa.png" group-title="Brasil: variedades",ISTV | Brasil
+https://stmv1.srvstm.com/sistema7933/sistema7933/playlist.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/u6DuMQk.png" group-title="Brasil: variedades",NGT SP
+https://isaocorp.cloudecast.com/ngt/tracks-v1a1/mono.m3u8
+#EXTINF:-1 tvg-id="NovaEraTV.br" tvg-country="BR" tvg-language="Portuguese" tvg-logo="https://i.imgur.com/IK3F9Uq.png" group-title="Brasil: variedades",Nova Era TV | Lages SC Brasil
+http://wz3.dnip.com.br/novaeratv/novaeratv.sdp/live.m3u8
+#EXTINF:-1 tvg-id="Primertv.br" tvg-logo="https://i.imgur.com/VZaj5Oc.png" group-title="Brasil: variedades",Primer TV | Brasil
+http://200.194.238.229:8383/live/primer/playlist.m3u8
+#EXTINF:-1 tvg-id="TVConquista.br" tvg-logo="https://i.imgur.com/RDekR7e.png" group-title="Brasil: variedades",Record | TV Conquista | MT Brasil
+http://tvconquistalrv.duckdns.org:8080/hls/tvconquistalrv.m3u8
