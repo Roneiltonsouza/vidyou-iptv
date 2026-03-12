@@ -28,9 +28,17 @@
         #gaveta {
             position: absolute; top: 0; left: -300px; width: 280px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 2147483647; transition: 0.4s;
-            border-right: 3px solid #ff4500; overflow-y: auto; display: flex; flex-direction: column;
+            border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
+        
+        /* Estilo da Pesquisa */
+        .search-container { padding: 10px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        #search-input { 
+            width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ff4500; 
+            background: #000; color: #fff; box-sizing: border-box; outline: none;
+        }
+
         #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
@@ -54,12 +62,16 @@
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR CANAIS X</div>
+        
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="🔍 Buscar canal..." onkeyup="filtrarCanais()">
+        </div>
+
         <div id="itens-canais"></div>
     </div>
 </div>
 
 <script>
-    // URL CONFIGURADA PARA O SEU REPOSITÓRIO
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     
     const video = document.getElementById('vid');
@@ -71,11 +83,9 @@
 
     async function buscarLista() {
         try {
-            // 1. Pega o link que o painel enviou para o arquivo lista.txt
             const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
             const linkReal = (await resLink.text()).trim();
             
-            // 2. Só tenta carregar se for um link de verdade (começando com http)
             if (linkReal.startsWith("http")) {
                 const resM3U = await fetch(linkReal);
                 const text = await resM3U.text();
@@ -95,20 +105,27 @@
                 if (link && link.startsWith('http')) listaCanais.push({ nome, logo, link });
             }
         }
-        renderizar();
+        renderizar(listaCanais);
     }
 
-    function renderizar() {
-        document.getElementById('itens-canais').innerHTML = listaCanais.map((c, i) => `
-            <div class="canal-item" onclick="tocar(${i})">
+    // Renderizar aceita uma lista para permitir a filtragem
+    function renderizar(canais) {
+        document.getElementById('itens-canais').innerHTML = canais.map((c) => `
+            <div class="canal-item" onclick="tocarDireto('${c.link}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
-    function tocar(i) {
-        const url = listaCanais[i].link;
+    // Função de Busca
+    function filtrarCanais() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        const filtrados = listaCanais.filter(c => c.nome.toLowerCase().includes(termo));
+        renderizar(filtrados);
+    }
+
+    function tocarDireto(url) {
         if (hls) hls.destroy();
         if (url.includes('.m3u8')) {
             hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
@@ -130,8 +147,16 @@
         else document.exitFullscreen();
     }
 
-    function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); resetTimer(); }
+    function abrirGaveta() { 
+        document.getElementById('gaveta').classList.add('ativa'); 
+        document.getElementById('search-input').focus(); // Foca na busca ao abrir
+    }
+    
+    function fecharGaveta() { 
+        document.getElementById('gaveta').classList.remove('ativa'); 
+        resetTimer(); 
+    }
+
     function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
 
     wrapper.addEventListener('click', resetTimer);
@@ -139,7 +164,7 @@
 
     window.onload = () => {
         buscarLista();
-        setInterval(buscarLista, 60000); // Checa se você enviou lista nova a cada 1 min
+        setInterval(buscarLista, 60000);
     };
 </script>
 </body>
