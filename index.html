@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO</title>
+    <title>VidYou IPTV PRO - V2</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -13,11 +13,12 @@
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: contain; background: #000; }
 
         .seta-canais {
-            position: absolute; top: 20px; left: 20px; z-index: 2147483647;
+            position: absolute; top: 20px; left: 20px; z-index: 200;
             background: rgba(0, 0, 0, 0.7); color: #ff4500; border: 2px solid #ff4500;
             width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 20px;
             display: flex; align-items: center; justify-content: center;
@@ -26,23 +27,35 @@
         .seta-canais.invisivel { opacity: 0; pointer-events: none; }
 
         #gaveta {
-            position: absolute; top: 0; left: -300px; width: 280px; height: 100%;
+            position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 2147483647; transition: 0.4s;
             border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
         
-        /* Estilo da Pesquisa */
-        .search-container { padding: 10px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        /* Pesquisa e Abas */
+        .search-container { padding: 10px; background: #1a1a1a; }
         #search-input { 
-            width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ff4500; 
-            background: #000; color: #fff; box-sizing: border-box; outline: none;
+            width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
+            background: #000; color: #fff; box-sizing: border-box; outline: none; margin-bottom: 10px;
         }
+        
+        .tabs-container { display: flex; gap: 5px; padding: 0 10px 10px; border-bottom: 1px solid #333; }
+        .tab-btn { 
+            flex: 1; padding: 8px 2px; font-size: 0.7rem; font-weight: bold; 
+            background: #222; border: 1px solid #444; color: #aaa; border-radius: 4px; cursor: pointer;
+            text-transform: uppercase;
+        }
+        .tab-btn.active { background: #ff4500; color: #000; border-color: #fff; }
 
-        #itens-canais { flex: 1; overflow-y: auto; }
+        #itens-canais { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
-        .canal-logo { width: 40px; height: 40px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
+        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
+        
+        /* Custom Scrollbar */
+        #itens-canais::-webkit-scrollbar { width: 6px; }
+        #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -61,10 +74,16 @@
     <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
     
     <div id="gaveta">
-        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR CANAIS X</div>
+        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
         
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="🔍 Buscar canal..." onkeyup="filtrarCanais()">
+            <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()">
+        </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV Online</button>
+            <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
+            <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
         </div>
 
         <div id="itens-canais"></div>
@@ -73,13 +92,50 @@
 
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
     const seta = document.getElementById('botaoSeta');
-    let hls = new Hls();
+    
+    let hls = null;
     let listaCanais = [];
+    let abaAtual = 'tv';
     let timerUI;
+
+    // CONFIGURAÇÃO DO NOVO PLAYER (OTIMIZADO)
+    function configurarPlayer(url) {
+        if (hls) { hls.destroy(); }
+
+        if (url.includes('.m3u8')) {
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    // Configurações para parar de travar
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60,
+                    nudgeMaxRetries: 10,
+                    lowLatencyMode: true
+                });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                            default: configurarPlayer(url); break;
+                        }
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.play();
+            }
+        } else {
+            video.src = url;
+            video.play();
+        }
+    }
 
     async function buscarLista() {
         try {
@@ -91,26 +147,61 @@
                 const text = await resM3U.text();
                 if(text.includes("#EXTM3U")) parseM3U(text);
             }
-        } catch (e) { console.log("Aguardando lista..."); }
+        } catch (e) { console.log("Erro ao carregar lista."); }
     }
 
     function parseM3U(text) {
         const lines = text.split('\n');
         listaCanais = [];
+        let currentGroup = "";
+
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes('#EXTINF')) {
-                const nome = lines[i].split(',')[1] || "Canal";
-                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
+                const info = lines[i];
+                const nome = info.split(',')[1] || "Sem Nome";
+                const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
+                const grupo = info.match(/group-title="([^"]+)"/)?.[1] || "";
                 const link = lines[i+1]?.trim();
-                if (link && link.startsWith('http')) listaCanais.push({ nome, logo, link });
+
+                if (link && link.startsWith('http')) {
+                    // Lógica simples de separação
+                    let tipo = 'tv';
+                    const lowerInfo = (nome + grupo).toLowerCase();
+                    
+                    if (lowerInfo.includes('filmes') || lowerInfo.includes('cinema')) tipo = 'filmes';
+                    else if (lowerInfo.includes('série') || lowerInfo.includes('series')) tipo = 'series';
+                    
+                    listaCanais.push({ nome, logo, link, tipo });
+                }
             }
         }
-        renderizar(listaCanais);
+        filtrarGeral();
     }
 
-    // Renderizar aceita uma lista para permitir a filtragem
+    function setTab(tab) {
+        abaAtual = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + tab).classList.add('active');
+        filtrarGeral();
+    }
+
+    function filtrarGeral() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        const filtrados = listaCanais.filter(c => {
+            const bateBusca = c.nome.toLowerCase().includes(termo);
+            const bateAba = c.tipo === abaAtual;
+            return bateBusca && bateAba;
+        });
+        renderizar(filtrados);
+    }
+
     function renderizar(canais) {
-        document.getElementById('itens-canais').innerHTML = canais.map((c) => `
+        const container = document.getElementById('itens-canais');
+        if (canais.length === 0) {
+            container.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Nenhum conteúdo encontrado nesta aba.</div>`;
+            return;
+        }
+        container.innerHTML = canais.map((c) => `
             <div class="canal-item" onclick="tocarDireto('${c.link}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
@@ -118,19 +209,8 @@
         `).join('');
     }
 
-    // Função de Busca
-    function filtrarCanais() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = listaCanais.filter(c => c.nome.toLowerCase().includes(termo));
-        renderizar(filtrados);
-    }
-
     function tocarDireto(url) {
-        if (hls) hls.destroy();
-        if (url.includes('.m3u8')) {
-            hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else { video.src = url; video.play(); }
+        configurarPlayer(url);
         fecharGaveta();
     }
 
@@ -149,7 +229,7 @@
 
     function abrirGaveta() { 
         document.getElementById('gaveta').classList.add('ativa'); 
-        document.getElementById('search-input').focus(); // Foca na busca ao abrir
+        document.getElementById('search-input').focus();
     }
     
     function fecharGaveta() { 
@@ -165,6 +245,7 @@
     window.onload = () => {
         buscarLista();
         setInterval(buscarLista, 60000);
+        resetTimer();
     };
 </script>
 </body>
