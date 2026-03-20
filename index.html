@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO - V2 (Cast Edition)</title>
+    <title>VidYou IPTV PRO - V2</title>
     
-    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
@@ -17,18 +17,23 @@
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
 
-        /* ESTILO PROFISSIONAL DO CAST NO HEADER */
-        .cast-container { display: flex; align-items: center; gap: 10px; }
+        /* ESTILO DO CAST NO HEADER */
+        .cast-controls { display: flex; align-items: center; gap: 10px; }
         
         google-cast-launcher {
-            width: 35px; height: 35px; cursor: pointer;
-            background: rgba(255,255,255,0.1); border-radius: 50%; padding: 5px;
+            display: inline-block;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50%;
+            padding: 5px;
             --connected-color: #00ff00;
             --disconnected-color: #ffffff;
         }
 
-        #cast-status { font-size: 10px; font-weight: bold; text-transform: uppercase; transition: 0.5s; }
-        
+        #cast-status { font-size: 10px; font-weight: bold; color: #aaa; text-transform: uppercase; }
+
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
@@ -68,7 +73,7 @@
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
-
+        
         #itens-canais::-webkit-scrollbar { width: 6px; }
         #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
     </style>
@@ -78,12 +83,13 @@
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
     
-    <div class="cast-container">
+    <div class="cast-controls">
         <span id="cast-status">OFFLINE</span>
-        <google-cast-launcher title="Transmitir para TV"></google-cast-launcher>
+        <google-cast-launcher title="Conectar à TV"></google-cast-launcher>
         <button class="btn-header" onclick="toggleFS()">⛶</button>
         <button class="btn-header" onclick="document.getElementById('file-input').click()">📁</button>
     </div>
+
     <input type="file" id="file-input" style="display:none" onchange="carregarLocal(event)">
 </header>
 
@@ -93,20 +99,30 @@
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
+        
         <div class="search-container">
             <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()">
         </div>
+
         <div class="tabs-container">
-            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV</button>
+            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV Online</button>
             <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
             <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
         </div>
+
         <div id="itens-canais"></div>
     </div>
 </div>
 
 <script>
-    // --- 2. MOTOR GOOGLE CAST (PROFISSIONAL) ---
+    const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
+    const video = document.getElementById('vid');
+    const wrapper = document.getElementById('player-wrapper');
+    const seta = document.getElementById('botaoSeta');
+    
+    let hls = null, listaCanais = [], abaAtual = 'tv', timerUI;
+
+    // --- 1. MOTOR GOOGLE CAST ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) { initializeCastApi(); }
     };
@@ -120,45 +136,37 @@
 
         context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
             const status = document.getElementById('cast-status');
-            if (status) {
-                if (event.sessionState === 'SESSION_STARTED') {
-                    status.innerText = "📺 CONECTADO";
-                    status.style.color = "#00ff00";
-                } else if (event.sessionState === 'SESSION_ENDED') {
-                    status.innerText = "OFFLINE";
-                    status.style.color = "#ffffff";
-                }
+            if (event.sessionState === 'SESSION_STARTED') {
+                status.innerText = "📺 CONECTADO";
+                status.style.color = "#00ff00";
+            } else if (event.sessionState === 'SESSION_ENDED') {
+                status.innerText = "OFFLINE";
+                status.style.color = "#ffffff";
             }
         });
     }
 
-    function enviarParaTV(url, title) {
+    function transmitirParaTV(url, nome) {
         const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
             metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
-            metadata.title = title;
-            metadata.subtitle = "Transmitindo via VidYou IPTV";
+            metadata.title = nome;
+            metadata.subtitle = "VidYou IPTV - Transmitindo";
             mediaInfo.metadata = metadata;
 
             const request = new chrome.cast.media.LoadRequest(mediaInfo);
             castSession.loadMedia(request).then(
-                () => console.log('✅ Rodando na TV'),
-                (err) => console.error('❌ Erro no Cast:', err)
+                () => console.log('Sucesso: Rodando na TV'),
+                (err) => console.error('Erro no Cast:', err)
             );
         }
     }
 
-    // --- 3. LÓGICA DO PLAYER E GAVETA ---
-    const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    const video = document.getElementById('vid');
-    const wrapper = document.getElementById('player-wrapper');
-    const seta = document.getElementById('botaoSeta');
-    let hls = null, listaCanais = [], abaAtual = 'tv', timerUI;
-
+    // --- 2. PLAYER E LISTA ---
     function configurarPlayer(url) {
-        if (hls) hls.destroy();
+        if (hls) { hls.destroy(); }
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
                 hls = new Hls({ maxBufferLength: 30, lowLatencyMode: true });
@@ -171,13 +179,6 @@
         } else { video.src = url; video.play(); }
     }
 
-    function tocarDireto(url, nome) {
-        configurarPlayer(url);
-        enviarParaTV(url, nome); // Tenta enviar para a TV automaticamente
-        fecharGaveta();
-    }
-
-    // --- BUSCA E PARSE DA LISTA ---
     async function buscarLista() {
         try {
             const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
@@ -195,9 +196,8 @@
         listaCanais = [];
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes('#EXTINF')) {
-                const info = lines[i];
-                const nome = info.split(',')[1] || "Sem Nome";
-                const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
+                const nome = lines[i].split(',')[1] || "Sem Nome";
+                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
                 const link = lines[i+1]?.trim();
                 if (link && link.startsWith('http')) {
                     let tipo = 'tv';
@@ -233,13 +233,27 @@
         `).join('');
     }
 
+    function tocarDireto(url, nome) {
+        configurarPlayer(url);
+        transmitirParaTV(url, nome); // Envia para a TV se estiver conectado
+        fecharGaveta();
+    }
+
+    function resetTimer() {
+        seta.classList.remove('invisivel');
+        clearTimeout(timerUI);
+        timerUI = setTimeout(() => {
+            if(!document.getElementById('gaveta').classList.contains('ativa')) seta.classList.add('invisivel');
+        }, 5000);
+    }
+
     function toggleFS() { if (!document.fullscreenElement) wrapper.requestFullscreen(); else document.exitFullscreen(); }
     function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); document.getElementById('search-input').focus(); }
     function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); resetTimer(); }
-    function resetTimer() { seta.classList.remove('invisivel'); clearTimeout(timerUI); timerUI = setTimeout(() => { if(!document.getElementById('gaveta').classList.contains('ativa')) seta.classList.add('invisivel'); }, 5000); }
     function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
 
     wrapper.addEventListener('click', resetTimer);
+    wrapper.addEventListener('touchstart', resetTimer);
     window.onload = () => { buscarLista(); resetTimer(); };
 </script>
 </body>
