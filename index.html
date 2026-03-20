@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VidYou IPTV PRO - V2</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+    
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         header { 
@@ -12,8 +14,20 @@
             background: linear-gradient(90deg, #4b0082, #ff4500); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
-        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
         
+        /* Estilização do ícone do Google Cast */
+        google-cast-launcher {
+            --connected-color: #fff;
+            --disconnected-color: #000;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            background: #ff4500;
+            border-radius: 4px;
+            padding: 3px;
+        }
+
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: contain; background: #000; }
 
@@ -33,7 +47,6 @@
         }
         #gaveta.ativa { left: 0; }
         
-        /* Pesquisa e Abas */
         .search-container { padding: 10px; background: #1a1a1a; }
         #search-input { 
             width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
@@ -53,7 +66,6 @@
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
         
-        /* Custom Scrollbar */
         #itens-canais::-webkit-scrollbar { width: 6px; }
         #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
     </style>
@@ -62,7 +74,8 @@
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
-    <div style="display:flex; gap:10px;">
+    <div style="display:flex; gap:10px; align-items: center;">
+        <google-cast-launcher></google-cast-launcher>
         <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
         <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 ABRIR</button>
     </div>
@@ -91,6 +104,35 @@
 </div>
 
 <script>
+    // --- LÓGICA GOOGLE CAST ---
+    window.__onGCastApiAvailable = function(isAvailable) {
+        if (isAvailable) {
+            const context = cast.framework.CastContext.getInstance();
+            context.setOptions({
+                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+            });
+        }
+    };
+
+    function enviarParaTV(url, title) {
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
+            mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+            mediaInfo.metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
+            mediaInfo.metadata.title = title;
+            mediaInfo.metadata.subtitle = "Transmitindo via VidYou IPTV";
+
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request).then(
+                () => console.log('Transmitindo para a TV: ' + title),
+                (err) => console.error('Erro no Cast: ', err)
+            );
+        }
+    }
+
+    // --- LÓGICA DO PLAYER IPTV ---
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
@@ -101,32 +143,14 @@
     let abaAtual = 'tv';
     let timerUI;
 
-    // CONFIGURAÇÃO DO NOVO PLAYER (OTIMIZADO)
     function configurarPlayer(url) {
         if (hls) { hls.destroy(); }
-
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
-                hls = new Hls({
-                    // Configurações para parar de travar
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60,
-                    nudgeMaxRetries: 10,
-                    lowLatencyMode: true
-                });
+                hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, nudgeMaxRetries: 10 });
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-                
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                            default: configurarPlayer(url); break;
-                        }
-                    }
-                });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = url;
                 video.play();
@@ -141,7 +165,6 @@
         try {
             const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
             const linkReal = (await resLink.text()).trim();
-            
             if (linkReal.startsWith("http")) {
                 const resM3U = await fetch(linkReal);
                 const text = await resM3U.text();
@@ -153,8 +176,6 @@
     function parseM3U(text) {
         const lines = text.split('\n');
         listaCanais = [];
-        let currentGroup = "";
-
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes('#EXTINF')) {
                 const info = lines[i];
@@ -162,15 +183,11 @@
                 const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
                 const grupo = info.match(/group-title="([^"]+)"/)?.[1] || "";
                 const link = lines[i+1]?.trim();
-
                 if (link && link.startsWith('http')) {
-                    // Lógica simples de separação
                     let tipo = 'tv';
                     const lowerInfo = (nome + grupo).toLowerCase();
-                    
                     if (lowerInfo.includes('filmes') || lowerInfo.includes('cinema')) tipo = 'filmes';
                     else if (lowerInfo.includes('série') || lowerInfo.includes('series')) tipo = 'series';
-                    
                     listaCanais.push({ nome, logo, link, tipo });
                 }
             }
@@ -187,30 +204,24 @@
 
     function filtrarGeral() {
         const termo = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = listaCanais.filter(c => {
-            const bateBusca = c.nome.toLowerCase().includes(termo);
-            const bateAba = c.tipo === abaAtual;
-            return bateBusca && bateAba;
-        });
+        const filtrados = listaCanais.filter(c => (c.nome.toLowerCase().includes(termo) && c.tipo === abaAtual));
         renderizar(filtrados);
     }
 
     function renderizar(canais) {
         const container = document.getElementById('itens-canais');
-        if (canais.length === 0) {
-            container.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Nenhum conteúdo encontrado nesta aba.</div>`;
-            return;
-        }
         container.innerHTML = canais.map((c) => `
-            <div class="canal-item" onclick="tocarDireto('${c.link}')">
+            <div class="canal-item" onclick="tocarDireto('${c.link}', '${c.nome}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
-    function tocarDireto(url) {
+    // MODIFICADO: Agora tenta transmitir ao clicar no canal
+    function tocarDireto(url, nome) {
         configurarPlayer(url);
+        enviarParaTV(url, nome); // Tenta enviar para a TV se estiver conectado
         fecharGaveta();
     }
 
