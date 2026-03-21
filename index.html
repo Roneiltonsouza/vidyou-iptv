@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV - RECONSTRUÍDO</title>
+    <title>VidYou IPTV PRO</title>
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
@@ -18,19 +18,20 @@
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        video { width: 100%; height: 100%; object-fit: contain; pointer-events: none; } /* Deixa o clique passar para o wrapper */
 
-        /* SETA POP-UP ORIGINAL */
+        /* SETA POP-UP */
         #setaPop {
             position: absolute; top: 20px; left: 20px; z-index: 9999;
             background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 22px;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 0 10px #ff4500;
-            transition: opacity 0.5s;
+            transition: opacity 0.4s ease-in-out;
+            opacity: 1;
         }
 
-        /* GAVETA ORIGINAL */
+        /* GAVETA */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
@@ -44,7 +45,7 @@
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
     </style>
 </head>
-<body onclick="interacaoTela()">
+<body>
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
@@ -55,7 +56,7 @@
 </header>
 
 <div id="player-wrapper">
-    <video id="vid" controls autoplay playsinline></video>
+    <video id="vid" autoplay playsinline></video>
     
     <button id="setaPop" onclick="abrirGaveta(event)">▼</button>
     
@@ -71,35 +72,42 @@
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
+    const seta = document.getElementById('setaPop');
     let hls = new Hls();
     let listaCanais = [];
     let timerSeta;
 
-    // 1. FUNÇÃO DA SETA (SUMIR E APARECER)
-    function interacaoTela() {
-        const seta = document.getElementById('setaPop');
+    // --- LÓGICA DA SETA (CORRIGIDA) ---
+    function gerenciarSeta() {
+        // Mostra a seta
         seta.style.opacity = "1";
-        seta.style.pointerEvents = "auto";
+        seta.style.visibility = "visible";
 
+        // Reinicia o tempo para sumir
         clearTimeout(timerSeta);
         timerSeta = setTimeout(() => {
-            // Só esconde se o menu lateral estiver fechado
             if (!document.getElementById('gaveta').classList.contains('ativa')) {
                 seta.style.opacity = "0";
-                seta.style.pointerEvents = "none";
+                setTimeout(() => { 
+                    if(seta.style.opacity === "0") seta.style.visibility = "hidden"; 
+                }, 400);
             }
         }, 5000); // 5 segundos
     }
 
-    // 2. BUSCAR CANAIS (SISTEMA ORIGINAL)
+    // Escuta qualquer clique na tela inteira para mostrar a seta
+    document.addEventListener('click', gerenciarSeta);
+    document.addEventListener('touchstart', gerenciarSeta);
+
+    // --- BUSCA DOS CANAIS ---
     async function buscarLista() {
         try {
             const res = await fetch(URL_GITHUB + "?t=" + Date.now());
             const linkM3U = (await res.text()).trim();
             const resM3U = await fetch(linkM3U);
-            const m3uText = await resM3U.text();
+            const text = await resM3U.text();
             
-            const lines = m3uText.split('\n');
+            const lines = text.split('\n');
             listaCanais = [];
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].includes('#EXTINF')) {
@@ -112,7 +120,7 @@
                 }
             }
             renderizar(listaCanais);
-        } catch (e) { alert("Erro ao carregar lista!"); }
+        } catch (e) { console.error("Erro na lista"); }
     }
 
     function renderizar(canais) {
@@ -148,9 +156,17 @@
         }
     }
 
-    function abrirGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.remove('ativa'); interacaoTela(); }
+    function abrirGaveta(e) { 
+        e.stopPropagation(); 
+        document.getElementById('gaveta').classList.add('ativa'); 
+    }
     
+    function fecharGaveta(e) { 
+        if(e) e.stopPropagation(); 
+        document.getElementById('gaveta').classList.remove('ativa'); 
+        gerenciarSeta(); 
+    }
+
     function filtrarGeral() {
         const t = document.getElementById('search-input').value.toLowerCase();
         renderizar(listaCanais.filter(c => c.nome.toLowerCase().includes(t)));
@@ -161,7 +177,7 @@
         else document.exitFullscreen(); 
     }
 
-    window.onload = () => { buscarLista(); interacaoTela(); };
+    window.onload = () => { buscarLista(); gerenciarSeta(); };
 </script>
 </body>
 </html>
