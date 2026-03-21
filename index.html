@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO - High Tech</title>
+    <title>VidYou IPTV PRO - ANTI-TRAVAMENTO</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
     
@@ -17,21 +17,29 @@
         }
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
-        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        /* Container do Player */
+        #player-wrapper { 
+            position: relative; width: 100%; flex: 1; background: #000; 
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; /* Indica que a tela é clicável */
+        }
+        video { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 
-        /* Seta com transição de visibilidade */
+        /* SETA POP-UP - ESTILO ORIGINAL */
         .seta-canais {
             position: absolute; top: 20px; left: 20px; z-index: 9999;
             background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 22px;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 10px #ff4500;
-            transition: opacity 0.5s ease; /* Efeito de sumir suave */
+            box-shadow: 0 0 15px #ff4500;
+            transition: opacity 0.5s ease, visibility 0.5s;
             opacity: 1;
+            visibility: visible;
         }
-        .seta-canais.escondida { opacity: 0; pointer-events: none; }
+        /* Classe para esconder a seta */
+        .seta-hidden { opacity: 0; visibility: hidden; }
 
+        /* GAVETA ORIGINAL */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
@@ -45,7 +53,7 @@
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
     </style>
 </head>
-<body onclick="mostrarControles()">
+<body onload="initApp()">
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
@@ -55,10 +63,10 @@
     </div>
 </header>
 
-<div id="player-wrapper">
-    <video id="vid" controls autoplay playsinline></video>
+<div id="player-wrapper" onclick="resetSetaTimer()">
+    <video id="vid" autoplay playsinline></video>
     
-    <button id="seta" class="seta-canais" onclick="event.stopPropagation(); abrirGaveta()">▼</button>
+    <button id="setaPop" class="seta-canais" onclick="abrirGaveta(event)">▼</button>
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
@@ -71,59 +79,60 @@
 
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    let shakaPlayer;
+    let player;
     let listaCanais = [];
-    let timeoutSeta;
+    let setaTimeout;
 
-    // 1. INICIALIZA O PLAYER PROFISSIONAL (SHAKA)
+    // --- MOTOR ANTI-TRAVAMENTO (SHAKA PLAYER) ---
     async function initApp() {
         shaka.polyfils.installAll();
         const video = document.getElementById('vid');
-        shakaPlayer = new shaka.Player(video);
+        player = new shaka.Player(video);
 
-        // Configurações para não travar (Internet Fraca)
-        shakaPlayer.configure({
+        // Configuração Profissional para Internet Fraca
+        player.configure({
             streaming: {
-                rebufferingGoal: 2, 
-                bufferingGoal: 10,
-                jumpLargeGaps: true
+                rebufferingGoal: 1,       // Volta a tocar com apenas 1 segundo de buffer
+                bufferingGoal: 8,         // Carrega 8 segundos à frente
+                jumpLargeGaps: true,      // Pula travamentos do servidor IPTV
+                lowLatencyMode: true      // Prioriza velocidade sobre qualidade 4K
             }
         });
 
-        mostrarControles(); // Inicia o timer da seta
+        resetSetaTimer(); // Inicia contagem da seta
         buscarLista();
     }
 
-    // 2. LÓGICA DA SETA (SUMIR EM 5 SEG)
-    function mostrarControles() {
-        const seta = document.getElementById('seta');
-        seta.classList.remove('escondida');
+    // --- LÓGICA DA SETA (SUMIR/APARECER) ---
+    function resetSetaTimer() {
+        const seta = document.getElementById('setaPop');
+        seta.classList.remove('seta-hidden'); // Mostra a seta
         
-        clearTimeout(timeoutSeta);
-        timeoutSeta = setTimeout(() => {
+        clearTimeout(setaTimeout);
+        setaTimeout = setTimeout(() => {
+            // Só esconde se o menu não estiver aberto
             if (!document.getElementById('gaveta').classList.contains('ativa')) {
-                seta.classList.add('escondida');
+                seta.classList.add('seta-hidden');
             }
-        }, 5000); // 5 Segundos
+        }, 5000); // 5 Segundos EXATOS
     }
 
     async function tocarDireto(url) {
         try {
-            await shakaPlayer.load(url);
+            await player.load(url);
             fecharGaveta();
         } catch (e) {
-            // Fallback se o link não for compatível com Shaka
-            document.getElementById('vid').src = url;
+            document.getElementById('vid').src = url; // Fallback
             fecharGaveta();
         }
     }
 
-    // 3. BUSCA DA LISTA (IPTV)
+    // --- BUSCA E INTERFACE ---
     async function buscarLista() {
         try {
-            const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
-            const linkReal = (await resLink.text()).trim();
-            const resM3U = await fetch(linkReal);
+            const res = await fetch(URL_GITHUB + "?t=" + Date.now());
+            const link = (await res.text()).trim();
+            const resM3U = await fetch(link);
             const text = await resM3U.text();
             
             const lines = text.split('\n');
@@ -142,7 +151,7 @@
 
     function renderizar(canais) {
         document.getElementById('itens-canais').innerHTML = canais.map(c => `
-            <div class="canal-item" onclick="event.stopPropagation(); tocarDireto('${c.url}')">
+            <div class="canal-item" onclick="tocarDireto('${c.url}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
@@ -152,24 +161,31 @@
     function carregarLocal(event) {
         const file = event.target.files[0];
         if (file) {
-            shakaPlayer.unload();
+            player.unload();
             document.getElementById('vid').src = URL.createObjectURL(file);
             document.getElementById('vid').play();
         }
     }
 
-    function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); mostrarControles(); }
+    function abrirGaveta(e) { 
+        e.stopPropagation(); 
+        document.getElementById('gaveta').classList.add('ativa'); 
+    }
+    
+    function fecharGaveta() { 
+        document.getElementById('gaveta').classList.remove('ativa'); 
+        resetSetaTimer();
+    }
+
     function filtrarGeral() {
         const t = document.getElementById('search-input').value.toLowerCase();
         renderizar(listaCanais.filter(c => c.nome.toLowerCase().includes(t)));
     }
+
     function toggleFS() { 
         const el = document.getElementById('player-wrapper');
         if (!document.fullscreenElement) el.requestFullscreen(); else document.exitFullscreen(); 
     }
-
-    document.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
 </html>
