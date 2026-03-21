@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO - Oficial</title>
+    <title>VidYou IPTV PRO - High Tech</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
     
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -15,44 +15,37 @@
             background: linear-gradient(90deg, #4b0082, #ff4500); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
-
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
-        #player-wrapper { 
-            position: relative; width: 100%; flex: 1; background: #000; 
-            display: flex; align-items: center; justify-content: center; 
-        }
+        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
+        video { width: 100%; height: 100%; object-fit: contain; }
 
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-
+        /* Seta com transição de visibilidade */
         .seta-canais {
             position: absolute; top: 20px; left: 20px; z-index: 9999;
             background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 22px;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 0 10px #ff4500;
+            transition: opacity 0.5s ease; /* Efeito de sumir suave */
+            opacity: 1;
         }
+        .seta-canais.escondida { opacity: 0; pointer-events: none; }
 
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
-            border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
+            border-right: 3px solid #ff4500; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
-        
         .search-container { padding: 10px; background: #1a1a1a; }
-        #search-input { 
-            width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #ff4500; 
-            background: #000; color: #fff; box-sizing: border-box; outline: none;
-        }
-        
+        #search-input { width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #ff4500; background: #000; color: #fff; outline: none; box-sizing: border-box; }
         #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
-        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
+        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
     </style>
 </head>
-<body>
+<body onclick="mostrarControles()">
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
@@ -65,13 +58,11 @@
 <div id="player-wrapper">
     <video id="vid" controls autoplay playsinline></video>
     
-    <button class="seta-canais" onclick="abrirGaveta()">▼</button>
+    <button id="seta" class="seta-canais" onclick="event.stopPropagation(); abrirGaveta()">▼</button>
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="🔍 Buscar canal..." onkeyup="filtrarGeral()">
-        </div>
+        <div class="search-container"><input type="text" id="search-input" placeholder="🔍 Buscar canal..." onkeyup="filtrarGeral()"></div>
         <div id="itens-canais"></div>
     </div>
 </div>
@@ -80,93 +71,105 @@
 
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    const video = document.getElementById('vid');
-    let hls = null;
+    let shakaPlayer;
     let listaCanais = [];
+    let timeoutSeta;
 
-    // BUSCA A LISTA DO SEU GITHUB (CORRIGIDO)
+    // 1. INICIALIZA O PLAYER PROFISSIONAL (SHAKA)
+    async function initApp() {
+        shaka.polyfils.installAll();
+        const video = document.getElementById('vid');
+        shakaPlayer = new shaka.Player(video);
+
+        // Configurações para não travar (Internet Fraca)
+        shakaPlayer.configure({
+            streaming: {
+                rebufferingGoal: 2, 
+                bufferingGoal: 10,
+                jumpLargeGaps: true
+            }
+        });
+
+        mostrarControles(); // Inicia o timer da seta
+        buscarLista();
+    }
+
+    // 2. LÓGICA DA SETA (SUMIR EM 5 SEG)
+    function mostrarControles() {
+        const seta = document.getElementById('seta');
+        seta.classList.remove('escondida');
+        
+        clearTimeout(timeoutSeta);
+        timeoutSeta = setTimeout(() => {
+            if (!document.getElementById('gaveta').classList.contains('ativa')) {
+                seta.classList.add('escondida');
+            }
+        }, 5000); // 5 Segundos
+    }
+
+    async function tocarDireto(url) {
+        try {
+            await shakaPlayer.load(url);
+            fecharGaveta();
+        } catch (e) {
+            // Fallback se o link não for compatível com Shaka
+            document.getElementById('vid').src = url;
+            fecharGaveta();
+        }
+    }
+
+    // 3. BUSCA DA LISTA (IPTV)
     async function buscarLista() {
         try {
-            // 1. Pega o link da lista que está no lista.txt
             const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
             const linkReal = (await resLink.text()).trim();
-            
-            // 2. Pega o conteúdo da lista M3U
             const resM3U = await fetch(linkReal);
             const text = await resM3U.text();
             
-            parseM3U(text);
-        } catch (e) {
-            console.error("Erro ao carregar lista. Verifique o link no GitHub.");
-        }
-    }
-
-    function parseM3U(text) {
-        const lines = text.split('\n');
-        listaCanais = [];
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('#EXTINF')) {
-                const info = lines[i];
-                const nome = info.split(',')[1] || "Canal";
-                const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || "";
-                const url = lines[i+1]?.trim();
-                if (url && url.startsWith('http')) {
-                    listaCanais.push({ nome, logo, url });
+            const lines = text.split('\n');
+            listaCanais = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('#EXTINF')) {
+                    const nome = lines[i].split(',')[1] || "Canal";
+                    const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
+                    const url = lines[i+1]?.trim();
+                    if (url && url.startsWith('http')) listaCanais.push({ nome, logo, url });
                 }
             }
-        }
-        renderizar(listaCanais);
+            renderizar(listaCanais);
+        } catch (e) { console.log("Erro na lista."); }
     }
 
     function renderizar(canais) {
-        const container = document.getElementById('itens-canais');
-        container.innerHTML = canais.map(c => `
-            <div class="canal-item" onclick="tocarDireto('${c.url}')">
+        document.getElementById('itens-canais').innerHTML = canais.map(c => `
+            <div class="canal-item" onclick="event.stopPropagation(); tocarDireto('${c.url}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
-    function tocarDireto(url) {
-        if (hls) { hls.destroy(); }
-
-        if (Hls.isSupported()) {
-            hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                manifestLoadingMaxRetry: 5
-            });
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = url;
-            video.play();
-        }
-        fecharGaveta();
-    }
-
     function carregarLocal(event) {
-        const arquivo = event.target.files[0];
-        if (arquivo) {
-            if (hls) { hls.destroy(); hls = null; }
-            video.src = URL.createObjectURL(arquivo);
-            video.play();
+        const file = event.target.files[0];
+        if (file) {
+            shakaPlayer.unload();
+            document.getElementById('vid').src = URL.createObjectURL(file);
+            document.getElementById('vid').play();
         }
-    }
-
-    function filtrarGeral() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = listaCanais.filter(c => c.nome.toLowerCase().includes(termo));
-        renderizar(filtrados);
     }
 
     function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); }
-    function toggleFS() { if (!document.fullscreenElement) document.getElementById('player-wrapper').requestFullscreen(); else document.exitFullscreen(); }
+    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); mostrarControles(); }
+    function filtrarGeral() {
+        const t = document.getElementById('search-input').value.toLowerCase();
+        renderizar(listaCanais.filter(c => c.nome.toLowerCase().includes(t)));
+    }
+    function toggleFS() { 
+        const el = document.getElementById('player-wrapper');
+        if (!document.fullscreenElement) el.requestFullscreen(); else document.exitFullscreen(); 
+    }
 
-    window.onload = buscarLista;
+    document.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
 </html>
