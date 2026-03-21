@@ -137,7 +137,7 @@
         controlesUI.classList.remove('invisivel');
         clearTimeout(timerUI);
         if (!document.getElementById('gaveta').classList.contains('ativa')) {
-            timerUI = setTimeout(() => { controlesUI.classList.add('invisivel'); }, 5000);
+            timerUI = setTimeout(() => controlesUI.classList.add('invisivel'), 5000);
         }
     }
 
@@ -174,11 +174,6 @@
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>`).join('');
-    }
-
-    function filtrarGeral() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        renderizar(listaCanais.filter(c => c.nome.toLowerCase().includes(termo)));
     }
 
     function toggleFS() { if (!document.fullscreenElement) wrapper.requestFullscreen(); else document.exitFullscreen(); }
