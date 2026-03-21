@@ -3,37 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO - V2</title>
+    <title>VidYou IPTV PRO - High Performance</title>
     
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/clappr@latest/dist/clappr.min.js"></script>
     
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
+        /* SUA INTERFACE ORIGINAL */
         header { 
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #4b0082, #ff4500); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
-
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
-        #player-wrapper { 
-            position: relative; width: 100%; flex: 1; background: #000; 
-            display: flex; align-items: center; justify-content: center; 
-        }
+        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; }
 
-        #video-player { width: 100%; height: 100%; }
+        /* Customização do Player Profissional para ocupar a tela toda */
+        .video-js { width: 100% !important; height: 100% !important; }
+        .vjs-big-play-button { display: none !important; } /* Toca direto */
 
-        /* Sua Interface Original */
         .cast-display-btn {
             position: absolute; top: 20px; right: 20px; z-index: 9999;
             background: rgba(0, 0, 0, 0.6); border: 1px solid #fff;
             border-radius: 50%; width: 50px; height: 50px;
             display: flex; align-items: center; justify-content: center;
         }
-
         google-cast-launcher { width: 30px; height: 30px; --disconnected-color: #ffffff; }
 
         .seta-canais {
@@ -41,22 +39,17 @@
             background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 22px;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 10px #ff4500;
         }
 
+        /* GAVETA ORIGINAL */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
-            border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
+            border-right: 3px solid #ff4500; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
-        
         .search-container { padding: 10px; background: #1a1a1a; }
-        #search-input { 
-            width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
-            background: #000; color: #fff; box-sizing: border-box; outline: none; margin-bottom: 10px;
-        }
-        
+        #search-input { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; background: #000; color: #fff; outline: none; }
         #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
@@ -67,71 +60,36 @@
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
-    <button class="btn-header" onclick="solicitarPermissaoAudio()">⛶ ATIVAR ÁUDIO/SISTEMA</button>
+    <button class="btn-header" onclick="toggleFS()">⛶ FULLSCREEN</button>
 </header>
 
 <div id="player-wrapper">
-    <div id="video-player"></div>
+    <video id="my-player" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto" playsinline></video>
     
     <button class="seta-canais" onclick="abrirGaveta()">▼</button>
     
-    <div class="cast-display-btn">
-        <google-cast-launcher></google-cast-launcher>
-    </div>
+    <div class="cast-display-btn"><google-cast-launcher></google-cast-launcher></div>
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
-        <div class="search-container"><input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()"></div>
+        <div class="search-container"><input type="text" id="search-input" placeholder="🔍 Buscar canal..." onkeyup="filtrarGeral()"></div>
         <div id="itens-canais"></div>
     </div>
 </div>
 
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    let player;
-    let listaCanais = [];
-
-    // --- FUNÇÃO DE PERMISSÃO PARA ANDROID ---
-    // Isso "acorda" o decodificador de áudio do sistema
-    function solicitarPermissaoAudio() {
-        const dummyContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (dummyContext.state === 'suspended') {
-            dummyContext.resume();
-        }
-        alert("Sistema de Áudio e Vídeo Autorizado!");
-    }
-
-    function carregarPlayer(url, titulo) {
-        if (player) player.destroy();
-        
-        player = new Clappr.Player({
-            source: url,
-            parentId: "#video-player",
-            width: '100%',
-            height: '100%',
-            autoPlay: true,
-            mute: false, 
-            preload: 'auto',
-            playback: {
-                playInline: true,
-                hlsjsConfig: {
-                    enableWorker: true,
-                    lowLatencyMode: false,
-                    xhrSetup: function(xhr, url) { xhr.withCredentials = false; }
-                }
-            },
-            // Garante que o som não seja bloqueado pelo sistema do app
-            events: {
-                onPlay: function() {
-                    if (player.core.mediaControl.container.playback.el.muted) {
-                        player.core.mediaControl.container.playback.el.muted = false;
-                    }
-                }
+    let player = videojs('my-player', {
+        html5: {
+            vjsHls: { 
+                overrideNative: true,
+                bandwidth: 500000, // Otimizado para internet fraca
+                enableLowInitialPlaylist: true 
             }
-        });
-    }
+        }
+    });
 
-    // CONFIG CAST MANTIDA
+    // CONFIG CAST
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) {
             cast.framework.CastContext.getInstance().setOptions({
@@ -141,49 +99,57 @@
         }
     };
 
+    function tocarDireto(url, nome) {
+        // Enviar para Cast se estiver conectado
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
+            const metadata = new chrome.cast.media.GenericMediaMetadata();
+            metadata.title = nome;
+            mediaInfo.metadata = metadata;
+            castSession.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo));
+        }
+
+        // Troca de fonte profissional (sem delay)
+        player.src({ type: 'application/x-mpegURL', src: url });
+        player.play();
+        fecharGaveta();
+    }
+
     async function buscarLista() {
         try {
             const res = await fetch(URL_GITHUB + "?t=" + Date.now());
             const link = (await res.text()).trim();
             const resM3U = await fetch(link);
             const text = await resM3U.text();
-            parseM3U(text);
-        } catch (e) { console.log("Erro na lista."); }
-    }
-
-    function parseM3U(text) {
-        const lines = text.split('\n');
-        listaCanais = [];
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('#EXTINF')) {
-                const nome = lines[i].split(',')[1] || "Canal";
-                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
-                const link = lines[i+1]?.trim();
-                if (link && link.startsWith('http')) {
-                    listaCanais.push({ nome, logo, link });
+            
+            const lines = text.split('\n');
+            let canais = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('#EXTINF')) {
+                    const nome = lines[i].split(',')[1] || "Canal";
+                    const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
+                    const url = lines[i+1]?.trim();
+                    if (url && url.startsWith('http')) canais.push({ nome, logo, url });
                 }
             }
-        }
-        renderizar(listaCanais);
+            renderizar(canais);
+        } catch (e) { console.log("Erro ao carregar lista."); }
     }
 
     function renderizar(canais) {
         document.getElementById('itens-canais').innerHTML = canais.map(c => `
-            <div class="canal-item" onclick="tocarDireto('${c.link}', '${c.nome}')">
+            <div class="canal-item" onclick="tocarDireto('${c.url}', '${c.nome}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
-    function tocarDireto(url, nome) {
-        carregarPlayer(url, nome);
-        fecharGaveta();
-    }
-
     function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); }
     function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); }
-    
+    function toggleFS() { if (!player.isFullscreen()) player.requestFullscreen(); else player.exitFullscreen(); }
+
     window.onload = buscarLista;
 </script>
 </body>
