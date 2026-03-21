@@ -10,21 +10,31 @@
     
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
         header { 
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #4b0082, #ff4500); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
+
+        .controls-right { display: flex; gap: 10px; align-items: center; }
+
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
-        /* Estilo do Botão Cast */
-        google-cast-launcher {
-            width: 35px;
-            height: 35px;
-            --disconnected-color: white;
-            --connected-color: #00ff00;
+        /* Estilo do Botão de Espelhamento (Cast) */
+        .cast-container {
+            width: 40px; height: 40px; 
+            background: rgba(0,0,0,0.5); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid #fff;
             cursor: pointer;
-            vertical-align: middle;
+        }
+
+        google-cast-launcher {
+            width: 25px; height: 25px;
+            --disconnected-color: #ffffff;
+            --connected-color: #00ff00;
         }
 
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
@@ -73,8 +83,11 @@
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
-    <div style="display:flex; gap:10px; align-items: center;">
-        <google-cast-launcher title="Transmitir para TV"></google-cast-launcher>
+    <div class="controls-right">
+        <div class="cast-container" title="Espelhar na TV" onclick="forceMirroring()">
+            <google-cast-launcher></google-cast-launcher>
+        </div>
+        
         <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
         <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 ABRIR</button>
     </div>
@@ -113,7 +126,7 @@
     let abaAtual = 'tv';
     let timerUI;
 
-    // --- INTEGRAÇÃO GOOGLE CAST ---
+    // --- LOGICA DE ESPELHAMENTO (GOOGLE CAST) ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) {
             cast.framework.CastContext.getInstance().setOptions({
@@ -123,38 +136,38 @@
         }
     };
 
-    function enviarParaTV(url, nome) {
+    function forceMirroring() {
+        // Se o botão oficial falhar, tenta disparar o menu de transmissão do Chrome
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (!castSession) {
+            alert("Selecione sua TV na lista que aparecerá no navegador.");
+        }
+    }
+
+    function enviarParaTV(url, titulo) {
         const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
-            metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
-            metadata.title = nome;
-            metadata.subtitle = "VidYou IPTV - Transmitindo";
+            metadata.title = titulo;
+            metadata.subtitle = "Transmitindo via VidYou IPTV";
             mediaInfo.metadata = metadata;
 
             const request = new chrome.cast.media.LoadRequest(mediaInfo);
-            castSession.loadMedia(request).then(
-                () => console.log('Transmitindo para TV...'),
-                (err) => console.error('Erro no Cast:', err)
-            );
+            castSession.loadMedia(request);
         }
     }
 
-    // --- FUNÇÕES DO PLAYER ---
-    function configurarPlayer(url, nome = "VidYou IPTV") {
-        // Se estiver conectado ao Cast, envia direto para a TV também
-        enviarParaTV(url, nome);
+    // --- CONFIGURAÇÃO DO PLAYER ---
+    function configurarPlayer(url, titulo = "Canal IPTV") {
+        // Tenta enviar para TV se estiver conectado
+        enviarParaTV(url, titulo);
 
         if (hls) { hls.destroy(); }
 
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
-                hls = new Hls({
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60,
-                    lowLatencyMode: true
-                });
+                hls = new Hls({ maxBufferLength: 30, lowLatencyMode: true });
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
@@ -168,11 +181,11 @@
         }
     }
 
+    // --- BUSCA E PARSE DA LISTA ---
     async function buscarLista() {
         try {
             const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
             const linkReal = (await resLink.text()).trim();
-            
             if (linkReal.startsWith("http")) {
                 const resM3U = await fetch(linkReal);
                 const text = await resM3U.text();
@@ -223,18 +236,15 @@
 
     function renderizar(canais) {
         const container = document.getElementById('itens-canais');
-        if (canais.length === 0) {
-            container.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Nenhum conteúdo encontrado.</div>`;
-            return;
-        }
         container.innerHTML = canais.map((c) => `
-            <div class="canal-item" onclick="configurarPlayer('${c.link}', '${c.nome.replace(/'/g, "")}'); fecharGaveta();">
+            <div class="canal-item" onclick="configurarPlayer('${c.link}', '${c.nome}'); fecharGaveta();">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
+    // --- INTERFACE ---
     function resetTimer() {
         seta.classList.remove('invisivel');
         clearTimeout(timerUI);
@@ -261,13 +271,7 @@
     function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
 
     wrapper.addEventListener('click', resetTimer);
-    wrapper.addEventListener('touchstart', resetTimer);
-
-    window.onload = () => {
-        buscarLista();
-        setInterval(buscarLista, 60000);
-        resetTimer();
-    };
+    window.onload = () => { buscarLista(); resetTimer(); };
 </script>
 </body>
 </html>
