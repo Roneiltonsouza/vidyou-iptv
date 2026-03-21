@@ -10,24 +10,18 @@
     
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
         header { 
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #4b0082, #ff4500); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
-
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
-        
         #player-wrapper { 
             position: relative; width: 100%; flex: 1; background: #000; 
             display: flex; align-items: center; justify-content: center; 
             overflow: hidden;
         }
-
         video { width: 100%; height: 100%; object-fit: contain; background: #000; z-index: 1; }
-
-        /* Botão Cast no Display */
         .cast-display-btn {
             position: absolute; top: 20px; right: 20px; z-index: 9999;
             background: rgba(0, 0, 0, 0.6); border: 1px solid #fff;
@@ -35,14 +29,11 @@
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.5s;
         }
-
         google-cast-launcher {
             width: 30px; height: 30px;
             --disconnected-color: #ffffff;
             --connected-color: #00ff00;
         }
-
-        /* Seta de Canais */
         .seta-canais {
             position: absolute; top: 20px; left: 20px; z-index: 9999;
             background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
@@ -51,23 +42,18 @@
             transition: opacity 0.5s ease; opacity: 1;
             box-shadow: 0 0 10px #ff4500;
         }
-
         .seta-canais.invisivel, .cast-display-btn.invisivel { opacity: 0; pointer-events: none; }
-
-        /* Gaveta de Canais */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
             border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
-        
         .search-container { padding: 10px; background: #1a1a1a; }
         #search-input { 
             width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
             background: #000; color: #fff; box-sizing: border-box; outline: none; margin-bottom: 10px;
         }
-        
         .tabs-container { display: flex; gap: 5px; padding: 0 10px 10px; border-bottom: 1px solid #333; }
         .tab-btn { 
             flex: 1; padding: 8px 2px; font-size: 0.7rem; font-weight: bold; 
@@ -75,12 +61,10 @@
             text-transform: uppercase;
         }
         .tab-btn.active { background: #ff4500; color: #000; border-color: #fff; }
-
         #itens-canais { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
-        
         #itens-canais::-webkit-scrollbar { width: 6px; }
         #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
     </style>
@@ -98,26 +82,20 @@
 
 <div id="player-wrapper">
     <video id="vid" controls playsinline></video>
-    
     <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
-    
     <div class="cast-display-btn" id="botaoCast">
         <google-cast-launcher></google-cast-launcher>
     </div>
-    
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
-        
         <div class="search-container">
             <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()">
         </div>
-
         <div class="tabs-container">
             <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV Online</button>
             <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
             <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
         </div>
-
         <div id="itens-canais"></div>
     </div>
 </div>
@@ -134,7 +112,6 @@
     let abaAtual = 'tv';
     let timerUI;
 
-    // --- CONFIGURAÇÃO GOOGLE CAST (MANTIDO) ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) {
             cast.framework.CastContext.getInstance().setOptions({
@@ -144,9 +121,7 @@
         }
     };
 
-    // --- LÓGICA DO PLAYER CORRIGIDA (ESTILO VERSÃO ANTIGA) ---
     function configurarPlayer(url, titulo) {
-        // Enviar para TV se o Cast estiver conectado
         const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
@@ -156,20 +131,17 @@
             castSession.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo));
         }
 
-        // Limpa o player anterior para evitar conflito
-        if (hls) { 
-            hls.destroy(); 
-            hls = null; 
-        }
+        if (hls) { hls.destroy(); hls = null; }
 
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
-                // Restaurado os valores de buffer da versão estável
                 hls = new Hls({
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60,
-                    nudgeMaxRetries: 10,
-                    lowLatencyMode: true // Garante reprodução rápida
+                    maxBufferLength: 40,             // Buffer robusto para evitar travas
+                    maxMaxBufferLength: 80,
+                    maxBufferSize: 60 * 1000 * 1000, // Limite de 60MB para não crashar o APP
+                    nudgeMaxRetries: 15,             // Empurra o vídeo se ele congelar
+                    enableWorker: true,              // Executa em segundo plano (Melhor para Apps)
+                    lowLatencyMode: false            // Prioriza estabilidade em conexões instáveis
                 });
                 hls.loadSource(url);
                 hls.attachMedia(video);
@@ -180,7 +152,7 @@
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
                             case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                            default: configurarPlayer(url, titulo); break;
+                            default: setTimeout(() => configurarPlayer(url, titulo), 2000); break;
                         }
                     }
                 });
