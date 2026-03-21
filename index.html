@@ -10,24 +10,39 @@
 
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
         header { 
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #4b0082, #ff4500); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
-        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; display: flex; align-items: center; }
-        
-        /* Estilo customizado para o botão de Cast no Header */
+
+        .controls-right { display: flex; gap: 10px; align-items: center; }
+
+        .btn-header { 
+            background: #000; border: 1px solid #ff4500; color: #ff4500; 
+            padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Estilo do Botão Cast no Header */
         google-cast-launcher {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
             --connected-color: #00ff00;
             --disconnected-color: #ffffff;
-            width: 25px;
-            height: 25px;
-            cursor: pointer;
         }
 
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+        /* Status de Transmissão sobre o vídeo */
+        #cast-indicator {
+            position: absolute; top: 10px; right: 10px; padding: 5px 10px;
+            background: rgba(0,0,0,0.6); border-radius: 5px; font-size: 10px;
+            color: #00ff00; display: none; border: 1px solid #00ff00;
+        }
 
         .seta-canais {
             position: absolute; top: 20px; left: 20px; z-index: 200;
@@ -48,31 +63,27 @@
         .search-container { padding: 10px; background: #1a1a1a; }
         #search-input { 
             width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
-            background: #000; color: #fff; box-sizing: border-box; outline: none; margin-bottom: 10px;
+            background: #000; color: #fff; box-sizing: border-box; outline: none;
         }
         
-        .tabs-container { display: flex; gap: 5px; padding: 0 10px 10px; border-bottom: 1px solid #333; }
+        .tabs-container { display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #333; }
         .tab-btn { 
             flex: 1; padding: 8px 2px; font-size: 0.7rem; font-weight: bold; 
             background: #222; border: 1px solid #444; color: #aaa; border-radius: 4px; cursor: pointer;
-            text-transform: uppercase;
         }
         .tab-btn.active { background: #ff4500; color: #000; border-color: #fff; }
 
-        #itens-canais { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
-        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
-        
-        #itens-canais::-webkit-scrollbar { width: 6px; }
-        #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
+        .canal-item:hover { background: #ff4500; color: #000; }
+        .canal-logo { width: 40px; height: 40px; border-radius: 4px; object-fit: contain; background: #fff; }
     </style>
 </head>
 <body>
 
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
-    <div style="display:flex; gap:10px; align-items: center;">
+    <div class="controls-right">
         <div class="btn-header" title="Transmitir para TV">
             <google-cast-launcher></google-cast-launcher>
         </div>
@@ -84,21 +95,17 @@
 
 <div id="player-wrapper">
     <video id="vid" controls playsinline></video>
+    <div id="cast-indicator">📺 TRANSMITINDO PARA TV</div>
     <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
-        
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()">
-        </div>
-
+        <div class="search-container"><input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()"></div>
         <div class="tabs-container">
-            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV Online</button>
+            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV</button>
             <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
             <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
         </div>
-
         <div id="itens-canais"></div>
     </div>
 </div>
@@ -108,15 +115,15 @@
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
     const seta = document.getElementById('botaoSeta');
+    const castInd = document.getElementById('cast-indicator');
     
     let hls = null;
     let listaCanais = [];
     let abaAtual = 'tv';
-    let timerUI;
-    let currentStreamUrl = "";
-    let currentStreamTitle = "VidYou IPTV";
+    let currentUrl = "";
+    let currentTitle = "VidYou IPTV";
 
-    // --- LOGICA GOOGLE CAST ---
+    // --- MOTOR GOOGLE CAST ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) { initializeCastApi(); }
     };
@@ -128,57 +135,59 @@
             autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
         });
 
-        // Envia automaticamente se o usuário conectar enquanto um vídeo já está rolando
         context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
-            if (event.sessionState === 'SESSION_STARTED' && currentStreamUrl) {
-                enviarParaTV(currentStreamUrl, currentStreamTitle);
+            switch (event.sessionState) {
+                case 'SESSION_STARTED':
+                    castInd.style.display = 'block';
+                    if (currentUrl) enviarParaTV(currentUrl, currentTitle);
+                    break;
+                case 'SESSION_ENDED':
+                    castInd.style.display = 'none';
+                    break;
             }
         });
     }
 
     function enviarParaTV(url, title) {
-        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
-        if (castSession) {
+        const session = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (session) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
-            metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
             metadata.title = title;
-            metadata.subtitle = "Transmitindo via VidYou IPTV";
+            metadata.subtitle = "VidYou IPTV Pro";
             mediaInfo.metadata = metadata;
 
             const request = new chrome.cast.media.LoadRequest(mediaInfo);
-            castSession.loadMedia(request).catch(err => console.error('Erro Cast:', err));
+            session.loadMedia(request).then(() => video.pause());
         }
     }
 
-    // --- LOGICA PLAYER ---
+    // --- FUNÇÕES DO PLAYER ---
     function configurarPlayer(url, title) {
-        currentStreamUrl = url;
-        currentStreamTitle = title || "Canal Selecionado";
+        currentUrl = url;
+        currentTitle = title || "Canal";
         
-        if (hls) { hls.destroy(); }
-
-        // Se o Cast estiver ativo, envia para a TV
-        if (cast.framework.CastContext.getInstance().getCurrentSession()) {
-            enviarParaTV(url, currentStreamTitle);
+        // Se estiver conectado no Cast, envia para TV
+        const session = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (session) {
+            enviarParaTV(url, currentTitle);
+            return;
         }
 
-        if (url.includes('.m3u8')) {
-            if (Hls.isSupported()) {
-                hls = new Hls({ maxBufferLength: 30, lowLatencyMode: true });
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.play();
-            }
+        if (hls) hls.destroy();
+
+        if (url.includes('.m3u8') && Hls.isSupported()) {
+            hls = new Hls({ maxBufferLength: 30 });
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         } else {
             video.src = url;
             video.play();
         }
     }
 
+    // --- LÓGICA DE LISTA E UI ---
     async function buscarLista() {
         try {
             const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
@@ -186,7 +195,7 @@
             if (linkReal.startsWith("http")) {
                 const resM3U = await fetch(linkReal);
                 const text = await resM3U.text();
-                if(text.includes("#EXTM3U")) parseM3U(text);
+                parseM3U(text);
             }
         } catch (e) { console.log("Erro ao carregar lista."); }
     }
@@ -196,17 +205,15 @@
         listaCanais = [];
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes('#EXTINF')) {
-                const info = lines[i];
-                const nome = info.split(',')[1] || "Sem Nome";
-                const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
-                const grupo = info.match(/group-title="([^"]+)"/)?.[1] || "";
+                const nome = lines[i].split(',')[1] || "Sem Nome";
+                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || '';
+                const grupo = lines[i].match(/group-title="([^"]+)"/)?.[1] || "";
                 const link = lines[i+1]?.trim();
-
-                if (link && link.startsWith('http')) {
+                if (link?.startsWith('http')) {
                     let tipo = 'tv';
-                    const lowerInfo = (nome + grupo).toLowerCase();
-                    if (lowerInfo.includes('filmes') || lowerInfo.includes('cinema')) tipo = 'filmes';
-                    else if (lowerInfo.includes('série') || lowerInfo.includes('series')) tipo = 'series';
+                    const low = (nome + grupo).toLowerCase();
+                    if (low.includes('filmes')) tipo = 'filmes';
+                    else if (low.includes('série')) tipo = 'series';
                     listaCanais.push({ nome, logo, link, tipo });
                 }
             }
@@ -214,75 +221,31 @@
         filtrarGeral();
     }
 
-    function setTab(tab) {
-        abaAtual = tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('btn-' + tab).classList.add('active');
-        filtrarGeral();
-    }
-
     function filtrarGeral() {
         const termo = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = listaCanais.filter(c => {
-            const bateBusca = c.nome.toLowerCase().includes(termo);
-            const bateAba = c.tipo === abaAtual;
-            return bateBusca && bateAba;
-        });
-        renderizar(filtrados);
-    }
-
-    function renderizar(canais) {
+        const filtrados = listaCanais.filter(c => c.tipo === abaAtual && c.nome.toLowerCase().includes(termo));
         const container = document.getElementById('itens-canais');
-        if (canais.length === 0) {
-            container.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Nenhum conteúdo.</div>`;
-            return;
-        }
-        container.innerHTML = canais.map((c) => `
-            <div class="canal-item" onclick="tocarDireto('${c.link}', '${c.nome.replace(/'/g, "\\'")}')">
-                <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
+        container.innerHTML = filtrados.map(c => `
+            <div class="canal-item" onclick="tocarDireto('${c.link}', '${c.nome.replace(/'/g, "")}')">
+                <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/40'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
-    function tocarDireto(url, title) {
-        configurarPlayer(url, title);
-        fecharGaveta();
+    function setTab(tab) {
+        abaAtual = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-'+tab));
+        filtrarGeral();
     }
 
-    function resetTimer() {
-        seta.classList.remove('invisivel');
-        clearTimeout(timerUI);
-        timerUI = setTimeout(() => {
-            if(!document.getElementById('gaveta').classList.contains('ativa')) seta.classList.add('invisivel');
-        }, 5000);
-    }
-
-    function toggleFS() {
-        if (!document.fullscreenElement) wrapper.requestFullscreen();
-        else document.exitFullscreen();
-    }
-
-    function abrirGaveta() { 
-        document.getElementById('gaveta').classList.add('ativa'); 
-        document.getElementById('search-input').focus();
-    }
-    
-    function fecharGaveta() { 
-        document.getElementById('gaveta').classList.remove('ativa'); 
-        resetTimer(); 
-    }
-
+    function tocarDireto(url, title) { configurarPlayer(url, title); fecharGaveta(); }
+    function toggleFS() { if (!document.fullscreenElement) wrapper.requestFullscreen(); else document.exitFullscreen(); }
+    function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); }
+    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); }
     function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
 
-    wrapper.addEventListener('click', resetTimer);
-    wrapper.addEventListener('touchstart', resetTimer);
-
-    window.onload = () => {
-        buscarLista();
-        setInterval(buscarLista, 60000);
-        resetTimer();
-    };
+    window.onload = () => { buscarLista(); setInterval(buscarLista, 60000); };
 </script>
 </body>
 </html>
