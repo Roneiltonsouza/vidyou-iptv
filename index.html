@@ -12,7 +12,7 @@
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         header { 
-            padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
+            padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #1a1a1a, #4b0082); 
             border-bottom: 2px solid #ff4500; z-index: 100;
         }
@@ -22,25 +22,28 @@
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: contain; }
 
-        /* CONTROLES DENTRO DO DISPLAY */
-        #controles-ui {
+        /* --- CONTROLES FLUTUANTES DENTRO DA TELA --- */
+        .controles-display {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 200; transition: opacity 0.5s ease; opacity: 1;
         }
-        #controles-ui.invisivel { opacity: 0; }
+        .controles-display.invisivel { opacity: 0; }
 
-        /* BOTÃO CAST ORIGINAL (CANTO SUPERIOR DIREITO) */
-        .cast-container {
+        /* Botão Cast no Canto Superior Direito */
+        .cast-overlay {
             position: absolute; top: 20px; right: 20px; pointer-events: auto;
-        }
-        google-cast-launcher {
-            width: 45px; height: 45px; cursor: pointer;
-            --connected-color: #00ff00;
-            --disconnected-color: #ffffff;
-            filter: drop-shadow(0 0 10px rgba(0,0,0,1));
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            background: rgba(0,0,0,0.6); padding: 10px; border-radius: 15px; border: 1px solid rgba(255,69,0,0.3);
         }
 
-        /* SETA CANAIS (CANTO SUPERIOR ESQUERDO) */
+        google-cast-launcher {
+            width: 40px; height: 40px; cursor: pointer;
+            --connected-color: #00ff00; --disconnected-color: #ffffff;
+        }
+
+        #cast-status { font-size: 9px; font-weight: bold; color: #00ff00; text-shadow: 0 0 5px #000; }
+
+        /* Seta de Canais no Canto Superior Esquerdo */
         .seta-canais {
             position: absolute; top: 20px; left: 20px; pointer-events: auto;
             background: rgba(0, 0, 0, 0.7); color: #ff4500; border: 2px solid #ff4500;
@@ -48,21 +51,31 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* GAVETA */
+        /* --- GAVETA E LISTA --- */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 2147483647; transition: 0.4s;
             border-right: 3px solid #ff4500; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
+        
+        .search-container { padding: 10px; background: #1a1a1a; }
+        #search-input { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; background: #000; color: #fff; box-sizing: border-box; outline: none; }
+        
+        .tabs-container { display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #333; }
+        .tab-btn { flex: 1; padding: 8px 2px; font-size: 0.7rem; font-weight: bold; background: #222; border: 1px solid #444; color: #aaa; border-radius: 4px; cursor: pointer; }
+        .tab-btn.active { background: #ff4500; color: #000; border-color: #fff; }
+
+        #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .canal-logo { width: 45px; height: 45px; border-radius: 5px; object-fit: contain; background: #fff; }
+        .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
+        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight: 900; color: #fff; font-size: 1.3rem;">VidYou <span style="color:#ff4500">PRO</span></div>
+    <div style="font-weight: 900; color: #fff; font-size: 1.2rem;">VidYou <span style="color:#ff4500">PRO</span></div>
     <div style="display:flex; gap:10px;">
         <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
         <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 ABRIR</button>
@@ -73,67 +86,74 @@
 <div id="player-wrapper">
     <video id="vid" controls playsinline></video>
     
-    <div id="controles-ui">
+    <div id="controles-ui" class="controles-display">
         <button class="seta-canais" onclick="abrirGaveta()">▼</button>
 
-        <div class="cast-container">
-            <google-cast-launcher></google-cast-launcher>
+        <div class="cast-overlay">
+            <google-cast-launcher title="Transmitir para Smart TV"></google-cast-launcher>
+            <span id="cast-status">OFFLINE</span>
         </div>
     </div>
     
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
-        <div style="padding:10px;"><input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()" style="width:100%; padding:10px; background:#000; color:#fff; border:1px solid #ff4500;"></div>
-        <div id="itens-canais" style="flex:1; overflow-y:auto;"></div>
+        <div class="search-container"><input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()"></div>
+        <div class="tabs-container">
+            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV</button>
+            <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
+            <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
+        </div>
+        <div id="itens-canais"></div>
     </div>
 </div>
 
 <script>
+    const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
     const controlesUI = document.getElementById('controles-ui');
-    let hls = null, listaCanais = [], timerUI;
+    let hls = null, listaCanais = [], abaAtual = 'tv', timerUI;
 
-    // --- MOTOR CAST (SISTEMA QUE VOCÊ PASSOU) ---
-    window.__onGCastApiAvailable = function(isAvailable) {
-        if (isAvailable) {
-            const context = cast.framework.CastContext.getInstance();
-            context.setOptions({
-                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-            });
-        }
-    };
+    // --- MOTOR GOOGLE CAST ---
+    window.__onGCastApiAvailable = function(isAvailable) { if (isAvailable) initializeCastApi(); };
+
+    function initializeCastApi() {
+        const context = cast.framework.CastContext.getInstance();
+        context.setOptions({ receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID, autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED });
+        context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
+            const status = document.getElementById('cast-status');
+            if (event.sessionState === 'SESSION_STARTED') { status.innerText = "ONLINE"; status.style.color = "#00ff00"; }
+            else { status.innerText = "OFFLINE"; status.style.color = "#ff4500"; }
+        });
+    }
 
     function transmitir(url, nome) {
-        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
-        if (castSession) {
+        const session = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (session) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
             metadata.title = nome;
             mediaInfo.metadata = metadata;
-            castSession.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo));
+            session.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo));
         }
     }
 
-    // --- FUNÇÕES DE PLAYER E UI ---
+    // --- PLAYER E UI ---
     function configurarPlayer(url) {
         if (hls) hls.destroy();
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
-                hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
+                hls = new Hls({ maxBufferLength: 30 });
+                hls.loadSource(url); hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
             }
         } else { video.src = url; video.play(); }
     }
 
-    function tocarDireto(url, nome) {
-        configurarPlayer(url);
-        transmitir(url, nome);
-        fecharGaveta();
-    }
+    function tocarDireto(url, nome) { configurarPlayer(url); transmitir(url, nome); fecharGaveta(); }
 
-    function resetTimer() {
+    // --- SISTEMA DE VISIBILIDADE (AUTO-HIDE) ---
+    function mostrarControles() {
         controlesUI.classList.remove('invisivel');
         clearTimeout(timerUI);
         if (!document.getElementById('gaveta').classList.contains('ativa')) {
@@ -142,16 +162,15 @@
     }
 
     function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); controlesUI.classList.add('invisivel'); }
-    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); resetTimer(); }
+    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); mostrarControles(); }
 
-    // --- CARREGAMENTO DA LISTA ---
+    // --- LISTA E FETCH ---
     async function buscarLista() {
         try {
-            const res = await fetch("https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt?t=" + Date.now());
-            const link = (await res.text()).trim();
-            const resM3U = await fetch(link);
-            const text = await resM3U.text();
-            parseM3U(text);
+            const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
+            const linkReal = (await resLink.text()).trim();
+            const resM3U = await fetch(linkReal);
+            parseM3U(await resM3U.text());
         } catch (e) {}
     }
 
@@ -162,26 +181,34 @@
                 const nome = lines[i].split(',')[1] || "Canal";
                 const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || '';
                 const link = lines[i+1]?.trim();
-                if (link?.startsWith('http')) listaCanais.push({ nome, logo, link });
+                if (link?.startsWith('http')) {
+                    let tipo = 'tv';
+                    if (nome.toLowerCase().includes('filme')) tipo = 'filmes';
+                    else if (nome.toLowerCase().includes('série')) tipo = 'series';
+                    listaCanais.push({ nome, logo, link, tipo });
+                }
             }
         }
-        renderizar(listaCanais);
+        filtrarGeral();
     }
 
-    function renderizar(canais) {
-        document.getElementById('itens-canais').innerHTML = canais.map(c => `
+    function filtrarGeral() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        const filtrados = listaCanais.filter(c => c.nome.toLowerCase().includes(termo) && c.tipo === abaAtual);
+        document.getElementById('itens-canais').innerHTML = filtrados.map(c => `
             <div class="canal-item" onclick="tocarDireto('${c.link}', '${c.nome}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>`).join('');
     }
 
+    function setTab(t) { abaAtual = t; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-'+t).classList.add('active'); filtrarGeral(); }
     function toggleFS() { if (!document.fullscreenElement) wrapper.requestFullscreen(); else document.exitFullscreen(); }
     function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
 
-    wrapper.addEventListener('click', resetTimer);
-    wrapper.addEventListener('touchstart', resetTimer);
-    window.onload = () => { buscarLista(); resetTimer(); };
+    wrapper.addEventListener('click', mostrarControles);
+    wrapper.addEventListener('touchstart', mostrarControles);
+    window.onload = () => { buscarLista(); mostrarControles(); };
 </script>
 </body>
 </html>
