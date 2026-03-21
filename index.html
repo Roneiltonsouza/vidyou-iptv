@@ -18,65 +18,65 @@
         }
 
         .controls-right { display: flex; gap: 10px; align-items: center; }
-
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
-        
-        /* Estilo do Botão de Espelhamento (Cast) */
-        .cast-container {
-            width: 40px; height: 40px; 
-            background: rgba(0,0,0,0.5); 
-            border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid #fff;
+
+        /* Estilo do Player e Display */
+        #player-wrapper { 
+            position: relative; 
+            width: 100%; 
+            flex: 1; 
+            background: #000; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
             cursor: pointer;
         }
+        video { width: 100%; height: 100%; object-fit: contain; z-index: 1; }
 
-        google-cast-launcher {
-            width: 25px; height: 25px;
-            --disconnected-color: #ffffff;
-            --connected-color: #00ff00;
-        }
-
-        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-
+        /* Seta Pop-up Corrigida */
         .seta-canais {
-            position: absolute; top: 20px; left: 20px; z-index: 200;
-            background: rgba(0, 0, 0, 0.7); color: #ff4500; border: 2px solid #ff4500;
-            width: 50px; height: 50px; border-radius: 50%; cursor: pointer; font-size: 20px;
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: rgba(255, 69, 0, 0.9); color: #000; border: 2px solid #fff;
+            width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 24px;
             display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease; opacity: 1;
+            transition: opacity 0.3s ease, transform 0.2s; opacity: 1;
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.5);
         }
-        .seta-canais.invisivel { opacity: 0; pointer-events: none; }
+        .seta-canais.invisivel { opacity: 0; pointer-events: none; transform: scale(0.8); }
 
+        /* Botão Cast no Display */
+        .display-cast {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: rgba(0, 0, 0, 0.6); padding: 10px; border-radius: 50%;
+            border: 1px solid #ff4500; display: flex; transition: opacity 0.3s;
+        }
+        google-cast-launcher { --disconnected-color: white; --connected-color: #00ff00; width: 30px; height: 30px; }
+
+        /* Menu Lateral (Gaveta) */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
-            background: rgba(10, 10, 10, 0.98); z-index: 2147483647; transition: 0.4s;
-            border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
+            background: rgba(10, 10, 10, 0.98); z-index: 2000; transition: 0.4s;
+            border-right: 3px solid #ff4500; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
         
         .search-container { padding: 10px; background: #1a1a1a; }
         #search-input { 
-            width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
-            background: #000; color: #fff; box-sizing: border-box; outline: none; margin-bottom: 10px;
+            width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #ff4500; 
+            background: #000; color: #fff; box-sizing: border-box; outline: none;
         }
         
-        .tabs-container { display: flex; gap: 5px; padding: 0 10px 10px; border-bottom: 1px solid #333; }
+        .tabs-container { display: flex; gap: 5px; padding: 10px; border-bottom: 1px solid #333; }
         .tab-btn { 
-            flex: 1; padding: 8px 2px; font-size: 0.7rem; font-weight: bold; 
+            flex: 1; padding: 10px 2px; font-size: 0.7rem; font-weight: bold; 
             background: #222; border: 1px solid #444; color: #aaa; border-radius: 4px; cursor: pointer;
-            text-transform: uppercase;
         }
-        .tab-btn.active { background: #ff4500; color: #000; border-color: #fff; }
+        .tab-btn.active { background: #ff4500; color: #000; }
 
-        #itens-canais { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
-        .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+        #itens-canais { flex: 1; overflow-y: auto; }
+        .canal-item { padding: 15px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
-        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
-        
-        #itens-canais::-webkit-scrollbar { width: 6px; }
-        #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
+        .canal-logo { width: 50px; height: 50px; border-radius: 5px; object-fit: contain; background: #fff; }
     </style>
 </head>
 <body>
@@ -84,31 +84,32 @@
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
     <div class="controls-right">
-        <div class="cast-container" title="Espelhar na TV" onclick="forceMirroring()">
-            <google-cast-launcher></google-cast-launcher>
-        </div>
-        
         <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
         <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 ABRIR</button>
     </div>
     <input type="file" id="file-input" style="display:none" onchange="carregarLocal(event)">
 </header>
 
-<div id="player-wrapper">
+<div id="player-wrapper" onclick="resetTimer()">
     <video id="vid" controls playsinline></video>
-    <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
     
-    <div id="gaveta">
+    <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta(event)">▼</button>
+    
+    <div class="display-cast" id="castDisplay">
+        <google-cast-launcher></google-cast-launcher>
+    </div>
+    
+    <div id="gaveta" onclick="event.stopPropagation()">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
         
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()">
+            <input type="text" id="search-input" placeholder="🔍 Buscar canal ou filme..." onkeyup="filtrarGeral()">
         </div>
 
         <div class="tabs-container">
-            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV Online</button>
-            <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
-            <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
+            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV</button>
+            <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 FILMES</button>
+            <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 SÉRIES</button>
         </div>
 
         <div id="itens-canais"></div>
@@ -120,13 +121,14 @@
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
     const seta = document.getElementById('botaoSeta');
+    const castBtn = document.getElementById('castDisplay');
     
     let hls = null;
     let listaCanais = [];
     let abaAtual = 'tv';
     let timerUI;
 
-    // --- LOGICA DE ESPELHAMENTO (GOOGLE CAST) ---
+    // --- GOOGLE CAST SDK ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) {
             cast.framework.CastContext.getInstance().setOptions({
@@ -136,32 +138,27 @@
         }
     };
 
-    function forceMirroring() {
-        // Se o botão oficial falhar, tenta disparar o menu de transmissão do Chrome
-        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
-        if (!castSession) {
-            alert("Selecione sua TV na lista que aparecerá no navegador.");
-        }
-    }
-
-    function enviarParaTV(url, titulo) {
+    function transmitirParaTV(url, titulo) {
         const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
             metadata.title = titulo;
-            metadata.subtitle = "Transmitindo via VidYou IPTV";
             mediaInfo.metadata = metadata;
-
             const request = new chrome.cast.media.LoadRequest(mediaInfo);
             castSession.loadMedia(request);
         }
     }
 
-    // --- CONFIGURAÇÃO DO PLAYER ---
-    function configurarPlayer(url, titulo = "Canal IPTV") {
-        // Tenta enviar para TV se estiver conectado
-        enviarParaTV(url, titulo);
+    // --- PLAYER (CARREGAMENTO AUTOMÁTICO CORRIGIDO) ---
+    function configurarPlayer(url, titulo) {
+        // Limpa vídeo anterior
+        video.pause();
+        video.src = "";
+        video.load();
+
+        // Transmite se houver conexão
+        transmitirParaTV(url, titulo);
 
         if (hls) { hls.destroy(); }
 
@@ -171,7 +168,7 @@
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            } else {
                 video.src = url;
                 video.play();
             }
@@ -179,19 +176,20 @@
             video.src = url;
             video.play();
         }
+        fecharGaveta();
     }
 
-    // --- BUSCA E PARSE DA LISTA ---
+    // --- LISTA E FILTROS ---
     async function buscarLista() {
         try {
-            const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
-            const linkReal = (await resLink.text()).trim();
+            const res = await fetch(URL_GITHUB + "?t=" + Date.now());
+            const linkReal = (await res.text()).trim();
             if (linkReal.startsWith("http")) {
                 const resM3U = await fetch(linkReal);
                 const text = await resM3U.text();
-                if(text.includes("#EXTM3U")) parseM3U(text);
+                parseM3U(text);
             }
-        } catch (e) { console.log("Erro ao carregar lista."); }
+        } catch (e) { console.error("Erro ao carregar lista."); }
     }
 
     function parseM3U(text) {
@@ -199,17 +197,16 @@
         listaCanais = [];
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes('#EXTINF')) {
-                const info = lines[i];
-                const nome = info.split(',')[1] || "Sem Nome";
-                const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || 'https://via.placeholder.com/45';
-                const grupo = info.match(/group-title="([^"]+)"/)?.[1] || "";
+                const nome = lines[i].split(',')[1] || "Sem Nome";
+                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || '';
+                const grupo = lines[i].match(/group-title="([^"]+)"/)?.[1] || "";
                 const link = lines[i+1]?.trim();
 
                 if (link && link.startsWith('http')) {
                     let tipo = 'tv';
-                    const lowerInfo = (nome + grupo).toLowerCase();
-                    if (lowerInfo.includes('filmes') || lowerInfo.includes('cinema')) tipo = 'filmes';
-                    else if (lowerInfo.includes('série') || lowerInfo.includes('series')) tipo = 'series';
+                    const lower = (nome + grupo).toLowerCase();
+                    if (lower.includes('filme')) tipo = 'filmes';
+                    else if (lower.includes('série') || lower.includes('series')) tipo = 'series';
                     listaCanais.push({ nome, logo, link, tipo });
                 }
             }
@@ -226,31 +223,46 @@
 
     function filtrarGeral() {
         const termo = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = listaCanais.filter(c => {
-            const bateBusca = c.nome.toLowerCase().includes(termo);
-            const bateAba = c.tipo === abaAtual;
-            return bateBusca && bateAba;
-        });
+        const filtrados = listaCanais.filter(c => c.tipo === abaAtual && c.nome.toLowerCase().includes(termo));
         renderizar(filtrados);
     }
 
     function renderizar(canais) {
         const container = document.getElementById('itens-canais');
-        container.innerHTML = canais.map((c) => `
-            <div class="canal-item" onclick="configurarPlayer('${c.link}', '${c.nome}'); fecharGaveta();">
-                <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
+        container.innerHTML = canais.map(c => `
+            <div class="canal-item" onclick="configurarPlayer('${c.link}', '${c.nome.replace(/'/g, "")}')">
+                <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/50?text=IPTV'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
-    // --- INTERFACE ---
+    // --- CONTROLE DA UI (SETA E BOTÕES) ---
     function resetTimer() {
+        // Mostra os elementos
         seta.classList.remove('invisivel');
+        castBtn.style.opacity = "1";
+        
         clearTimeout(timerUI);
+        
+        // Esconde após 5 segundos se o menu não estiver aberto
         timerUI = setTimeout(() => {
-            if(!document.getElementById('gaveta').classList.contains('ativa')) seta.classList.add('invisivel');
+            if(!document.getElementById('gaveta').classList.contains('ativa')) {
+                seta.classList.add('invisivel');
+                castBtn.style.opacity = "0";
+            }
         }, 5000);
+    }
+
+    function abrirGaveta(e) {
+        if(e) e.stopPropagation();
+        document.getElementById('gaveta').classList.add('ativa');
+        document.getElementById('search-input').focus();
+    }
+    
+    function fecharGaveta() {
+        document.getElementById('gaveta').classList.remove('ativa');
+        resetTimer();
     }
 
     function toggleFS() {
@@ -258,20 +270,20 @@
         else document.exitFullscreen();
     }
 
-    function abrirGaveta() { 
-        document.getElementById('gaveta').classList.add('ativa'); 
-        document.getElementById('search-input').focus();
-    }
-    
-    function fecharGaveta() { 
-        document.getElementById('gaveta').classList.remove('ativa'); 
-        resetTimer(); 
+    function carregarLocal(e) { 
+        if (e.target.files[0]) { 
+            video.src = URL.createObjectURL(e.target.files[0]); 
+            video.play(); 
+        } 
     }
 
-    function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
-
-    wrapper.addEventListener('click', resetTimer);
-    window.onload = () => { buscarLista(); resetTimer(); };
+    // Inicialização
+    window.onload = () => {
+        buscarLista();
+        resetTimer();
+        // Detecta toques em dispositivos móveis
+        wrapper.addEventListener('touchstart', resetTimer);
+    };
 </script>
 </body>
 </html>
