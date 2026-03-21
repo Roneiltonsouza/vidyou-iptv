@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO - Limpo</title>
+    <title>VidYou IPTV PRO - Ultra Fast</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
     
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* SUA INTERFACE ORIGINAL PRESERVADA */
         header { 
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #4b0082, #ff4500); 
@@ -19,44 +18,27 @@
 
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         
-        #player-wrapper { 
-            position: relative; width: 100%; flex: 1; background: #000; 
-            display: flex; align-items: center; justify-content: center; 
-        }
+        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; display: flex; align-items: center; justify-content: center; }
+        video { width: 100%; height: 100%; object-fit: contain; }
 
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-
-        /* Botão Seta Canais Original */
         .seta-canais {
             position: absolute; top: 20px; left: 20px; z-index: 9999;
             background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 22px;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 10px #ff4500;
         }
 
-        /* Gaveta Original */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
-            background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s ease-in-out;
+            background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
             border-right: 3px solid #ff4500; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
-        
         .search-container { padding: 10px; background: #1a1a1a; }
-        #search-input { 
-            width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #ff4500; 
-            background: #000; color: #fff; box-sizing: border-box; outline: none;
-        }
-        
-        #itens-canais { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        #search-input { width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #ff4500; background: #000; color: #fff; outline: none; box-sizing: border-box; }
+        #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
-        
-        /* Scrollbar estilizada para o App */
-        #itens-canais::-webkit-scrollbar { width: 5px; }
-        #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; }
     </style>
 </head>
 <body>
@@ -64,92 +46,91 @@
 <header>
     <div style="font-weight: 900; color: #fff; font-size: 1.4rem;">VidYou <span style="color:#000">IPTV</span></div>
     <div style="display:flex; gap:10px;">
-        <button class="btn-header" onclick="toggleFS()">⛶ TELA CHEIA</button>
+        <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 GALERIA</button>
+        <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
     </div>
 </header>
 
 <div id="player-wrapper">
     <video id="vid" controls autoplay playsinline></video>
-    
-    <button class="seta-canais" onclick="abrirGaveta()">▼</button>
+    <button class="seta-canais" onclick="document.getElementById('gaveta').classList.add('ativa')">▼</button>
     
     <div id="gaveta">
-        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
-        <div class="search-container">
-            <input type="text" id="search-input" placeholder="🔍 Buscar canal..." onkeyup="filtrarGeral()">
-        </div>
+        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="document.getElementById('gaveta').classList.remove('ativa')">FECHAR MENU X</div>
+        <div class="search-container"><input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()"></div>
         <div id="itens-canais"></div>
     </div>
 </div>
 
+<input type="file" id="file-input" style="display:none" accept="video/*" onchange="carregarLocal(event)">
+
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    const video = document.getElementById('vid');
-    let hls = null;
+    let player;
     let listaCanais = [];
 
-    // MOTOR DE VÍDEO OTIMIZADO (Sem travas)
-    function configurarPlayer(url) {
-        if (hls) {
-            hls.destroy();
-            hls = null;
-        }
+    async function initPlayer() {
+        shaka.polyfils.installAll();
+        const video = document.getElementById('vid');
+        player = new shaka.Player(video);
 
-        if (Hls.isSupported()) {
-            hls = new Hls({
-                enableWorker: true,        // Roda o player em processo separado do app
-                lowLatencyMode: true,      // Abre o canal mais rápido
-                backBufferLength: 30       // Mantém buffer curto para não estourar a memória do celular
-            });
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(() => {
-                    // Se o Android bloquear o som, aqui ele força o play
-                    video.muted = true;
-                    video.play();
-                    video.muted = false;
-                });
-            });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = url;
-            video.play();
+        // CONFIGURAÇÃO ULTRA-FAST PARA INTERNET FRACA
+        player.configure({
+            streaming: {
+                bufferingGoal: 10,        // Tenta carregar 10 segundos à frente
+                rebufferingGoal: 2,       // Com apenas 2 segundos já volta a tocar
+                bufferBehind: 0,          // Limpa o que já passou para economizar RAM
+                jumpLargeGaps: true       // Pula buracos na transmissão para não travar
+            }
+        });
+
+        player.addEventListener('error', (e) => console.error('Erro:', e));
+        buscarLista();
+    }
+
+    async function tocarCanal(url) {
+        try {
+            await player.load(url);
+            document.getElementById('gaveta').classList.remove('ativa');
+        } catch (e) {
+            // Fallback para HLS nativo se o Shaka falhar no link específico
+            document.getElementById('vid').src = url;
         }
     }
 
-    // BUSCA DE LISTA
+    function carregarLocal(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            document.getElementById('vid').src = url;
+            document.getElementById('vid').play();
+        }
+    }
+
     async function buscarLista() {
         try {
-            const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
-            const linkReal = (await resLink.text()).trim();
-            const resM3U = await fetch(linkReal);
+            const res = await fetch(URL_GITHUB + "?t=" + Date.now());
+            const link = (await res.text()).trim();
+            const resM3U = await fetch(link);
             const text = await resM3U.text();
-            parseM3U(text);
-        } catch (e) {
-            console.log("Erro ao carregar lista de canais.");
-        }
-    }
-
-    function parseM3U(text) {
-        const lines = text.split('\n');
-        listaCanais = [];
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('#EXTINF')) {
-                const nome = lines[i].split(',')[1] || "Canal Sem Nome";
-                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
-                const url = lines[i+1]?.trim();
-                if (url && url.startsWith('http')) {
-                    listaCanais.push({ nome, logo, url });
+            
+            const lines = text.split('\n');
+            listaCanais = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('#EXTINF')) {
+                    const nome = lines[i].split(',')[1] || "Canal";
+                    const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
+                    const url = lines[i+1]?.trim();
+                    if (url && url.startsWith('http')) listaCanais.push({ nome, logo, url });
                 }
             }
-        }
-        renderizar(listaCanais);
+            renderizar(listaCanais);
+        } catch (e) {}
     }
 
     function renderizar(canais) {
-        const container = document.getElementById('itens-canais');
-        container.innerHTML = canais.map(c => `
-            <div class="canal-item" onclick="tocarDireto('${c.url}')">
+        document.getElementById('itens-canais').innerHTML = canais.map(c => `
+            <div class="canal-item" onclick="tocarCanal('${c.url}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
@@ -157,28 +138,16 @@
     }
 
     function filtrarGeral() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = listaCanais.filter(c => c.nome.toLowerCase().includes(termo));
-        renderizar(filtrados);
+        const t = document.getElementById('search-input').value.toLowerCase();
+        renderizar(listaCanais.filter(c => c.nome.toLowerCase().includes(t)));
     }
 
-    function tocarDireto(url) {
-        configurarPlayer(url);
-        fecharGaveta();
-    }
-
-    function abrirGaveta() { document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); }
     function toggleFS() { 
-        if (!document.fullscreenElement) {
-            document.getElementById('player-wrapper').requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
+        const el = document.getElementById('player-wrapper');
+        if (!document.fullscreenElement) el.requestFullscreen(); else document.exitFullscreen(); 
     }
 
-    // Inicia a lista ao abrir o app
-    window.onload = buscarLista;
+    document.addEventListener('DOMContentLoaded', initPlayer);
 </script>
 </body>
 </html>
