@@ -14,87 +14,75 @@
         header { 
             padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
             background: linear-gradient(90deg, #4b0082, #ff4500); 
-            border-bottom: 2px solid #ff4500; z-index: 10;
+            border-bottom: 2px solid #ff4500; z-index: 100;
         }
 
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
-
-        /* --- DISPLAY DO PLAYER --- */
+        
         #player-wrapper { 
-            position: relative; 
-            width: 100%; 
-            flex: 1; 
-            background: #000; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+            position: relative; width: 100%; flex: 1; background: #000; 
+            display: flex; align-items: center; justify-content: center; 
+            overflow: hidden;
         }
 
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; z-index: 1; }
 
-        /* --- BOTÃO SCREEN MIRRORING (CAST) NA TELA DO VÍDEO --- */
-        .cast-overlay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 9999; /* Valor altíssimo para não ser coberto */
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #00ff00; /* Borda verde para você visualizar agora */
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: opacity 0.3s;
+        /* --- BOTÃO SCREEN MIRRORING NO DISPLAY --- */
+        .cast-display-btn {
+            position: absolute; top: 20px; right: 20px; z-index: 9999;
+            background: rgba(0, 0, 0, 0.6); border: 1px solid #fff;
+            border-radius: 50%; width: 50px; height: 50px;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.5s;
         }
 
         google-cast-launcher {
-            width: 35px;
-            height: 35px;
+            width: 30px; height: 30px;
             --disconnected-color: #ffffff;
             --connected-color: #00ff00;
         }
 
-        /* --- SETA POP-UP (CORRIGIDA) --- */
+        /* --- SETA CANAIS (CORRIGIDA) --- */
         .seta-canais {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 9999; /* Valor altíssimo */
-            background: #ff4500; /* Cor laranja forte */
-            color: #fff;
-            border: 2px solid #fff;
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 25px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease;
-            box-shadow: 0 0 15px #ff4500;
+            position: absolute; top: 20px; left: 20px; z-index: 9999;
+            background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff;
+            width: 55px; height: 55px; border-radius: 50%; cursor: pointer; font-size: 22px;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease; opacity: 1;
+            box-shadow: 0 0 10px #ff4500;
         }
 
-        .invisivel { opacity: 0 !important; pointer-events: none; }
+        .seta-canais.invisivel, .cast-display-btn.invisivel { opacity: 0; pointer-events: none; }
 
-        /* --- GAVETA / MENU --- */
+        /* --- GAVETA --- */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
-            border-right: 3px solid #ff4500; display: flex; flex-direction: column;
+            border-right: 3px solid #ff4500; overflow-y: hidden; display: flex; flex-direction: column;
         }
         #gaveta.ativa { left: 0; }
         
-        #itens-canais { flex: 1; overflow-y: auto; }
-        .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .canal-item:hover { background: #ff4500; color: #000; }
-        .canal-logo { width: 45px; height: 45px; object-fit: contain; background: #fff; border-radius: 4px; }
+        .search-container { padding: 10px; background: #1a1a1a; }
+        #search-input { 
+            width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ff4500; 
+            background: #000; color: #fff; box-sizing: border-box; outline: none; margin-bottom: 10px;
+        }
+        
+        .tabs-container { display: flex; gap: 5px; padding: 0 10px 10px; border-bottom: 1px solid #333; }
+        .tab-btn { 
+            flex: 1; padding: 8px 2px; font-size: 0.7rem; font-weight: bold; 
+            background: #222; border: 1px solid #444; color: #aaa; border-radius: 4px; cursor: pointer;
+            text-transform: uppercase;
+        }
+        .tab-btn.active { background: #ff4500; color: #000; border-color: #fff; }
 
-        .search-container { padding: 10px; }
-        #search-input { width: 100%; padding: 10px; border: 1px solid #ff4500; background: #000; color: #fff; }
+        #itens-canais { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+        .canal-item:hover { background: #ff4500; color: #000; font-weight: bold; }
+        .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; flex-shrink: 0; }
+        
+        #itens-canais::-webkit-scrollbar { width: 6px; }
+        #itens-canais::-webkit-scrollbar-thumb { background: #ff4500; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -108,20 +96,27 @@
     <input type="file" id="file-input" style="display:none" onchange="carregarLocal(event)">
 </header>
 
-<div id="player-wrapper" onmousemove="resetTimer()" onclick="resetTimer()" ontouchstart="resetTimer()">
+<div id="player-wrapper">
     <video id="vid" controls playsinline></video>
     
     <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
-    
-    <div class="cast-overlay" id="btnCast">
-        <google-cast-launcher title="Transmitir para TV"></google-cast-launcher>
+    <div class="cast-display-btn" id="botaoCast">
+        <google-cast-launcher></google-cast-launcher>
     </div>
-
+    
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta()">FECHAR MENU X</div>
+        
         <div class="search-container">
             <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="filtrarGeral()">
         </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn active" id="btn-tv" onclick="setTab('tv')">📺 TV Online</button>
+            <button class="tab-btn" id="btn-filmes" onclick="setTab('filmes')">🎬 Filmes</button>
+            <button class="tab-btn" id="btn-series" onclick="setTab('series')">🍿 Séries</button>
+        </div>
+
         <div id="itens-canais"></div>
     </div>
 </div>
@@ -129,13 +124,16 @@
 <script>
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
+    const wrapper = document.getElementById('player-wrapper');
     const seta = document.getElementById('botaoSeta');
-    const btnCast = document.getElementById('btnCast');
+    const castBtn = document.getElementById('botaoCast');
+    
     let hls = null;
     let listaCanais = [];
+    let abaAtual = 'tv';
     let timerUI;
 
-    // --- INICIALIZAÇÃO GOOGLE CAST ---
+    // --- CONFIGURAÇÃO GOOGLE CAST ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) {
             cast.framework.CastContext.getInstance().setOptions({
@@ -145,27 +143,43 @@
         }
     };
 
-    // --- FUNÇÃO PARA CARREGAR CANAL (AUTOMÁTICO) ---
-    function configurarPlayer(url, nome) {
-        // Envia para TV se estiver conectado
+    // --- PLAYER OTIMIZADO (SEM TRAVAMENTOS) ---
+    function configurarPlayer(url, titulo) {
+        // Enviar para TV se conectado
         const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
-            metadata.title = nome;
+            metadata.title = titulo || "VidYou IPTV";
             mediaInfo.metadata = metadata;
             castSession.loadMedia(new chrome.cast.media.LoadRequest(mediaInfo));
         }
 
-        // Carrega no player local
-        if (hls) hls.destroy();
+        if (hls) { hls.destroy(); }
+
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
-                hls = new Hls();
+                hls = new Hls({
+                    maxBufferLength: 45,        // Aumentado para evitar travamentos
+                    maxMaxBufferLength: 90,
+                    maxBufferSize: 80 * 1000 * 1000,
+                    nudgeMaxRetries: 15,
+                    lowLatencyMode: false       // Desativado para priorizar estabilidade
+                });
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-            } else {
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                            default: configurarPlayer(url); break;
+                        }
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = url;
                 video.play();
             }
@@ -173,43 +187,17 @@
             video.src = url;
             video.play();
         }
-        fecharGaveta();
     }
 
-    // --- CONTROLE DA SETA E BOTÕES (UI) ---
-    function resetTimer() {
-        // Quando toca na tela, MOSTRA TUDO
-        seta.classList.remove('invisivel');
-        btnCast.classList.remove('invisivel');
-        
-        clearTimeout(timerUI);
-        
-        // Esconde após 5 segundos de inatividade
-        timerUI = setTimeout(() => {
-            if(!document.getElementById('gaveta').classList.contains('ativa')) {
-                seta.classList.add('invisivel');
-                btnCast.classList.add('invisivel');
-            }
-        }, 5000);
-    }
-
-    function abrirGaveta() { 
-        document.getElementById('gaveta').classList.add('ativa'); 
-    }
-    
-    function fecharGaveta() { 
-        document.getElementById('gaveta').classList.remove('ativa'); 
-        resetTimer();
-    }
-
-    // --- BUSCA DE LISTA ---
     async function buscarLista() {
         try {
-            const res = await fetch(URL_GITHUB + "?t=" + Date.now());
-            const link = (await res.text()).trim();
-            const resM3U = await fetch(link);
-            const text = await resM3U.text();
-            parseM3U(text);
+            const resLink = await fetch(URL_GITHUB + "?t=" + Date.now());
+            const linkReal = (await resLink.text()).trim();
+            if (linkReal.startsWith("http")) {
+                const resM3U = await fetch(linkReal);
+                const text = await resM3U.text();
+                if(text.includes("#EXTM3U")) parseM3U(text);
+            }
         } catch (e) { console.log("Erro ao carregar lista."); }
     }
 
@@ -218,31 +206,93 @@
         listaCanais = [];
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes('#EXTINF')) {
-                const nome = lines[i].split(',')[1] || "Sem Nome";
-                const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || '';
+                const info = lines[i];
+                const nome = info.split(',')[1] || "Sem Nome";
+                const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || '';
+                const grupo = info.match(/group-title="([^"]+)"/)?.[1] || "";
                 const link = lines[i+1]?.trim();
-                if (link) listaCanais.push({ nome, logo, link });
+
+                if (link && link.startsWith('http')) {
+                    let tipo = 'tv';
+                    const lowerInfo = (nome + grupo).toLowerCase();
+                    if (lowerInfo.includes('filmes') || lowerInfo.includes('cinema')) tipo = 'filmes';
+                    else if (lowerInfo.includes('série') || lowerInfo.includes('series')) tipo = 'series';
+                    listaCanais.push({ nome, logo, link, tipo });
+                }
             }
         }
-        renderizar(listaCanais);
+        filtrarGeral();
+    }
+
+    function setTab(tab) {
+        abaAtual = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + tab).classList.add('active');
+        filtrarGeral();
+    }
+
+    function filtrarGeral() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        const filtrados = listaCanais.filter(c => c.tipo === abaAtual && c.nome.toLowerCase().includes(termo));
+        renderizar(filtrados);
     }
 
     function renderizar(canais) {
         const container = document.getElementById('itens-canais');
-        container.innerHTML = canais.map(c => `
-            <div class="canal-item" onclick="configurarPlayer('${c.link}', '${c.nome}')">
+        container.innerHTML = canais.map((c) => `
+            <div class="canal-item" onclick="tocarDireto('${c.link}', '${c.nome}')">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${c.nome}</span>
             </div>
         `).join('');
     }
 
+    function tocarDireto(url, nome) {
+        configurarPlayer(url, nome);
+        fecharGaveta();
+    }
+
+    // --- CORREÇÃO DA SETA E UI ---
+    function resetTimer() {
+        seta.classList.remove('invisivel');
+        castBtn.classList.remove('invisivel');
+        
+        clearTimeout(timerUI);
+        timerUI = setTimeout(() => {
+            if(!document.getElementById('gaveta').classList.contains('ativa')) {
+                seta.classList.add('invisivel');
+                castBtn.classList.add('invisivel');
+            }
+        }, 5000);
+    }
+
     function toggleFS() {
-        if (!document.fullscreenElement) document.getElementById('player-wrapper').requestFullscreen();
+        if (!document.fullscreenElement) wrapper.requestFullscreen();
         else document.exitFullscreen();
     }
 
-    window.onload = () => { buscarLista(); resetTimer(); };
+    function abrirGaveta() { 
+        document.getElementById('gaveta').classList.add('ativa'); 
+        document.getElementById('search-input').focus();
+    }
+    
+    function fecharGaveta() { 
+        document.getElementById('gaveta').classList.remove('ativa'); 
+        resetTimer(); 
+    }
+
+    function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
+
+    // Eventos para garantir que a seta apareça ao tocar
+    wrapper.addEventListener('click', resetTimer);
+    wrapper.addEventListener('touchstart', resetTimer);
+    wrapper.addEventListener('mousemove', resetTimer);
+
+    window.onload = () => {
+        buscarLista();
+        setInterval(buscarLista, 60000);
+        resetTimer();
+    };
 </script>
 </body>
 </html>
