@@ -1,1 +1,1 @@
-https://raw.githubusercontent.com/Roneiltonsouza/lista-iptv/refs/heads/main/lista.m3u
+https://iptv-org.github.io/iptv/countries/br.m3u
