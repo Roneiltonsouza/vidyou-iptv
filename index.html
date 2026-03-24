@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO - Tabs Edition</title>
+    <title>VidYou IPTV PRO - Cast Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
@@ -21,6 +21,7 @@
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: contain; }
 
+        /* Botões Flutuantes */
         #setaPop, #castPop {
             position: absolute; top: 20px; z-index: 9999;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer;
@@ -33,7 +34,7 @@
 
         google-cast-launcher { width: 35px; height: 35px; --connected-color: #00ff00; --disconnected-color: #ffffff; }
 
-        /* GAVETA E ABAS */
+        /* Gaveta Lateral */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
@@ -41,10 +42,12 @@
         }
         #gaveta.ativa { left: 0; }
 
+        /* Abas Categorias */
         .tabs-container { display: flex; background: #1a1a1a; border-bottom: 1px solid #333; }
-        .tab-btn { flex: 1; padding: 12px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: 0.3s; }
+        .tab-btn { flex: 1; padding: 12px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.7rem; transition: 0.3s; }
         .tab-btn.active { color: #ff4500; border-bottom: 2px solid #ff4500; background: #222; }
 
+        /* Itens da Lista */
         #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
@@ -89,12 +92,50 @@
     const video = document.getElementById('vid');
     const seta = document.getElementById('setaPop');
     const castBtn = document.getElementById('castPop');
-    let hls = new Hls();
     
-    // Categorias separadas
+    let hls = new Hls();
     let categorias = { tv: [], filmes: [], series: [] };
     let abaAtual = 'tv';
+    let currentUrl = ""; 
+    let currentTitle = "";
 
+    // --- 1. LÓGICA GOOGLE CAST (CORRIGIDA) ---
+    window.__onGCastApiAvailable = function(isAvailable) {
+        if (isAvailable) {
+            const context = cast.framework.CastContext.getInstance();
+            context.setOptions({
+                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+            });
+
+            // Monitora a conexão para enviar o vídeo automaticamente ao conectar
+            context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
+                if (event.sessionState === cast.framework.SessionState.SESSION_STARTED) {
+                    if (currentUrl) enviarParaTV(currentUrl, currentTitle);
+                }
+            });
+        }
+    };
+
+    function enviarParaTV(url, title) {
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
+            const metadata = new chrome.cast.media.GenericMediaMetadata();
+            metadata.title = title;
+            metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
+            metadata.subtitle = "VidYou IPTV - Transmitindo";
+            mediaInfo.metadata = metadata;
+
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request).then(
+                () => console.log('Transmitindo: ' + title),
+                (e) => console.error('Erro no Cast: ', e)
+            );
+        }
+    }
+
+    // --- 2. INTERFACE E CONTROLES ---
     function gerenciarInterface() {
         seta.style.opacity = "1"; seta.style.visibility = "visible";
         castBtn.style.opacity = "1"; castBtn.style.visibility = "visible";
@@ -114,20 +155,20 @@
 
     document.addEventListener('click', gerenciarInterface);
 
-    // --- LÓGICA DE ORGANIZAÇÃO PRO ---
+    // --- 3. GESTÃO DE CONTEÚDO E ABAS ---
     function organizarConteudo(nome, logo, url, grupo) {
         const n = nome.toLowerCase();
         const g = grupo ? grupo.toLowerCase() : "";
-
+        
         // Identifica Séries
         if (n.includes('s01') || n.includes('s02') || n.includes('temporada') || g.includes('serie')) {
             categorias.series.push({ nome, logo, url });
         } 
-        // Identifica Filmes (geralmente não tem "TV" no nome e são VOD)
+        // Identifica Filmes
         else if (g.includes('filmes') || g.includes('vod') || n.includes('2024') || n.includes('2025')) {
             categorias.filmes.push({ nome, logo, url });
         } 
-        // O resto entra em TV
+        // Identifica Canais de TV
         else {
             categorias.tv.push({ nome, logo, url });
         }
@@ -177,18 +218,34 @@
     }
 
     function tocarDireto(url, nome, e) {
-        e.stopPropagation();
+        if(e) e.stopPropagation();
+        currentUrl = url;
+        currentTitle = nome;
+
         if (Hls.isSupported()) {
             hls.destroy();
             hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else {
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play();
+                enviarParaTV(url, nome); 
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = url;
             video.play();
+            enviarParaTV(url, nome);
         }
         fecharGaveta(e);
+    }
+
+    function carregarLocal(event) {
+        const file = event.target.files[0];
+        if (file) {
+            hls.destroy();
+            video.src = URL.createObjectURL(file);
+            video.play();
+        }
     }
 
     function abrirGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.add('ativa'); }
@@ -202,5 +259,6 @@
 
     window.onload = () => { buscarLista(); gerenciarInterface(); };
 </script>
+
 </body>
 </html>
