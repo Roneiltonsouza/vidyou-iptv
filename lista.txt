@@ -1,1 +1,1 @@
-https://iptv-org.github.io/iptv/index.m3u
+https://raw.githubusercontent.com/Roneiltonsouza/lista-canais/refs/heads/main/lista_atualizada%20(3).m3u
