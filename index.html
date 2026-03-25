@@ -4,44 +4,70 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VidYou IPTV PRO</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+    
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, #4b0082, #ff4500); border-bottom: 2px solid #ff4500; z-index: 100; }
-        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        header { 
+            padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; 
+            background: linear-gradient(90deg, #4b0082, #ff4500); 
+            border-bottom: 2px solid #ff4500; z-index: 100;
+        }
+        .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        #setaPop { position: absolute; top: 20px; left: 20px; z-index: 9999; width: 55px; height: 55px; border-radius: 50%; background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px #ff4500; }
-        #gaveta { position: absolute; top: 0; left: -310px; width: 300px; height: 100%; background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s; border-right: 3px solid #ff4500; display: flex; flex-direction: column; }
+
+        #setaPop, #castPop {
+            position: absolute; top: 20px; z-index: 9999;
+            width: 55px; height: 55px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: 0.4s;
+        }
+        #setaPop { left: 20px; background: rgba(255, 69, 0, 0.9); color: #fff; border: 2px solid #fff; font-size: 22px; box-shadow: 0 0 10px #ff4500; }
+        #castPop { right: 20px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255,255,255,0.5); backdrop-filter: blur(5px); }
+        google-cast-launcher { width: 35px; height: 35px; --connected-color: #00ff00; --disconnected-color: #ffffff; }
+
+        #gaveta {
+            position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
+            background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
+            border-right: 3px solid #ff4500; display: flex; flex-direction: column;
+        }
         #gaveta.ativa { left: 0; }
-        .fechar-btn { padding: 15px; background: #ff4500; color: #000; font-weight: bold; text-align: center; cursor: pointer; }
         .search-box { padding: 10px; background: #111; }
         #search-input { width: 100%; padding: 12px; border-radius: 25px; border: 1px solid #ff4500; background: #000; color: #fff; box-sizing: border-box; outline: none; }
-        .tabs { display: flex; background: #1a1a1a; }
-        .tab-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
+
+        .tabs-container { display: flex; background: #1a1a1a; }
+        .tab-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.65rem; border-bottom: 2px solid transparent; }
         .tab-btn.active { color: #ff4500; border-bottom: 2px solid #ff4500; background: #222; }
-        #lista-itens { flex: 1; overflow-y: auto; }
+
+        #lista-itens { flex: 1; overflow-y: auto; padding-bottom: 20px; }
         .item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .item img { width: 50px; height: 50px; border-radius: 5px; object-fit: contain; background: #111; }
+        .item img { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight: 900; color: #fff; font-size: 1.3rem;">VIDYOU <span style="color:#000">PRO</span></div>
-    <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
+    <div style="font-weight: 900; color: #fff; font-size: 1.2rem;">VidYou <span style="color:#000">PRO</span></div>
+    <div style="display:flex; gap:8px;">
+        <button class="btn-header" onclick="document.getElementById('file-input').click()">📁 GALERIA</button>
+        <button class="btn-header" onclick="toggleFS()">⛶ TELA</button>
+    </div>
 </header>
 
 <div id="player-wrapper">
     <video id="vid" autoplay playsinline></video>
-    <button id="setaPop" onclick="abrirMenu()">▼</button>
+    <button id="setaPop" onclick="abrirGaveta(event)">▼</button>
+    <div id="castPop"><google-cast-launcher></google-cast-launcher></div>
     
     <div id="gaveta">
-        <div class="fechar-btn" onclick="fecharMenu()">FECHAR MENU X</div>
+        <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta(event)">FECHAR MENU X</div>
         <div class="search-box">
             <input type="text" id="search-input" placeholder="🔍 Pesquisar..." oninput="filtrar()">
         </div>
-        <div class="tabs">
+        <div class="tabs-container">
             <button class="tab-btn active" id="btn-tv" onclick="mudarAba('tv')">TV</button>
             <button class="tab-btn" id="btn-filmes" onclick="mudarAba('filmes')">FILMES</button>
             <button class="tab-btn" id="btn-series" onclick="mudarAba('series')">SÉRIES</button>
@@ -50,6 +76,8 @@
     </div>
 </div>
 
+<input type="file" id="file-input" style="display:none" accept="video/*" onchange="carregarLocal(event)">
+
 <script>
     const URL_LISTA = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
@@ -57,13 +85,19 @@
     let categorias = { tv: [], filmes: [], series: [] };
     let abaAtual = 'tv';
 
+    window.__onGCastApiAvailable = (isAvailable) => {
+        if (isAvailable) cast.framework.CastContext.getInstance().setOptions({
+            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+        });
+    };
+
     async function carregarLista() {
         try {
             const resTxt = await fetch(URL_LISTA + "?t=" + Date.now());
             const urlM3u = (await resTxt.text()).trim();
             const resM3u = await fetch(urlM3u);
             const data = await resM3u.text();
-            
             const linhas = data.split('\n');
             categorias = { tv: [], filmes: [], series: [] };
 
@@ -72,52 +106,51 @@
                     const nome = linhas[i].split(',')[1]?.trim() || "Sem nome";
                     const logo = linhas[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
                     const url = linhas[i+1]?.trim();
-                    
                     if (url && url.startsWith('http')) {
                         const n = nome.toLowerCase();
-                        
-                        // Lógica de Separação (SÉRIES)
-                        if (n.includes('série') || n.includes('serie') || n.includes('s0') || n.includes('t0') || n.includes('temp') || n.includes('episodio') || n.includes('capitulo')) {
+                        if (n.includes('serie') || n.includes('série') || n.includes('s0') || n.includes('temp')) {
                             categorias.series.push({ nome, logo, url });
-                        } 
-                        // Lógica de Separação (FILMES)
-                        else if (n.includes('filme') || n.includes('2024') || n.includes('2025') || n.includes('2026') || n.includes('vod') || n.includes('cinema')) {
+                        } else if (n.includes('filme') || n.includes('2024') || n.includes('2025') || n.includes('2026') || n.includes('vod')) {
                             categorias.filmes.push({ nome, logo, url });
-                        } 
-                        // Canais de TV
-                        else {
+                        } else {
                             categorias.tv.push({ nome, logo, url });
                         }
                     }
                 }
             }
             renderizar();
-        } catch (e) { console.log("Erro ao carregar lista."); }
+        } catch (e) { console.error("Erro na lista"); }
+    }
+
+    function carregarLocal(e) {
+        const file = e.target.files[0];
+        if (file) {
+            hls.destroy();
+            video.src = URL.createObjectURL(file);
+            video.play();
+        }
     }
 
     function renderizar(filtro = null) {
         const itens = filtro || categorias[abaAtual];
-        const container = document.getElementById('lista-itens');
-        container.innerHTML = itens.map(item => `
+        document.getElementById('lista-itens').innerHTML = itens.map(item => `
             <div class="item" onclick="tocar('${item.url}')">
-                <img src="${item.logo}" onerror="this.src='https://via.placeholder.com/50x50?text=IMG'">
+                <img src="${item.logo}" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${item.nome}</span>
             </div>
         `).join('');
+    }
+
+    function filtrar() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        renderizar(categorias[abaAtual].filter(i => i.nome.toLowerCase().includes(termo)));
     }
 
     function mudarAba(aba) {
         abaAtual = aba;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('btn-' + aba).classList.add('active');
-        document.getElementById('search-input').value = "";
         renderizar();
-    }
-
-    function filtrar() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        const resultado = categorias[abaAtual].filter(i => i.nome.toLowerCase().includes(termo));
-        renderizar(resultado);
     }
 
     function tocar(url) {
@@ -126,11 +159,11 @@
             hls.loadSource(url); hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         } else { video.src = url; video.play(); }
-        fecharMenu();
+        fecharGaveta();
     }
 
-    function abrirMenu() { document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharMenu() { document.getElementById('gaveta').classList.remove('ativa'); }
+    function abrirGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.add('ativa'); }
+    function fecharGaveta(e) { if(e) e.stopPropagation(); document.getElementById('gaveta').classList.remove('ativa'); }
     function toggleFS() { if (!document.fullscreenElement) document.getElementById('player-wrapper').requestFullscreen(); else document.exitFullscreen(); }
 
     window.onload = carregarLista;
