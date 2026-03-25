@@ -21,7 +21,6 @@
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: contain; }
 
-        /* Botões Flutuantes */
         #setaPop, #castPop {
             position: absolute; top: 20px; z-index: 9999;
             width: 55px; height: 55px; border-radius: 50%; cursor: pointer;
@@ -34,7 +33,6 @@
 
         google-cast-launcher { width: 35px; height: 35px; --connected-color: #00ff00; --disconnected-color: #ffffff; }
 
-        /* Gaveta Lateral */
         #gaveta {
             position: absolute; top: 0; left: -310px; width: 300px; height: 100%;
             background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s;
@@ -42,12 +40,17 @@
         }
         #gaveta.ativa { left: 0; }
 
-        /* Abas Categorias */
+        /* Estilo da Busca */
+        .search-container { padding: 10px; background: #111; }
+        #search-input { 
+            width: 100%; padding: 10px; border-radius: 20px; border: 1px solid #ff4500; 
+            background: #000; color: #fff; box-sizing: border-box; outline: none;
+        }
+
         .tabs-container { display: flex; background: #1a1a1a; border-bottom: 1px solid #333; }
         .tab-btn { flex: 1; padding: 12px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.7rem; transition: 0.3s; }
         .tab-btn.active { color: #ff4500; border-bottom: 2px solid #ff4500; background: #222; }
 
-        /* Itens da Lista */
         #itens-canais { flex: 1; overflow-y: auto; }
         .canal-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .canal-logo { width: 45px; height: 45px; border-radius: 4px; object-fit: contain; background: #fff; }
@@ -75,6 +78,10 @@
     <div id="gaveta">
         <div style="padding:15px; background:#ff4500; color:#000; font-weight:bold; cursor:pointer; text-align:center;" onclick="fecharGaveta(event)">FECHAR MENU X</div>
         
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="🔍 Pesquisar filmes, séries..." oninput="filtrarConteudo()">
+        </div>
+
         <div class="tabs-container">
             <button class="tab-btn active" onclick="mudarAba('tv', this)">TV ONLINE</button>
             <button class="tab-btn" onclick="mudarAba('filmes', this)">FILMES</button>
@@ -99,7 +106,6 @@
     let currentUrl = ""; 
     let currentTitle = "";
 
-    // --- 1. LÓGICA GOOGLE CAST (CORRIGIDA) ---
     window.__onGCastApiAvailable = function(isAvailable) {
         if (isAvailable) {
             const context = cast.framework.CastContext.getInstance();
@@ -107,8 +113,6 @@
                 receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
                 autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
             });
-
-            // Monitora a conexão para enviar o vídeo automaticamente ao conectar
             context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
                 if (event.sessionState === cast.framework.SessionState.SESSION_STARTED) {
                     if (currentUrl) enviarParaTV(currentUrl, currentTitle);
@@ -123,52 +127,40 @@
             const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegurl');
             const metadata = new chrome.cast.media.GenericMediaMetadata();
             metadata.title = title;
-            metadata.metadataType = chrome.cast.media.MetadataType.GENERIC;
             metadata.subtitle = "VidYou IPTV - Transmitindo";
             mediaInfo.metadata = metadata;
-
             const request = new chrome.cast.media.LoadRequest(mediaInfo);
-            castSession.loadMedia(request).then(
-                () => console.log('Transmitindo: ' + title),
-                (e) => console.error('Erro no Cast: ', e)
-            );
+            castSession.loadMedia(request);
         }
     }
 
-    // --- 2. INTERFACE E CONTROLES ---
     function gerenciarInterface() {
         seta.style.opacity = "1"; seta.style.visibility = "visible";
         castBtn.style.opacity = "1"; castBtn.style.visibility = "visible";
-
         clearTimeout(window.timerInterface);
         window.timerInterface = setTimeout(() => {
             if (!document.getElementById('gaveta').classList.contains('ativa')) {
                 seta.style.opacity = "0"; castBtn.style.opacity = "0";
-                setTimeout(() => { 
-                    if(seta.style.opacity === "0") {
-                        seta.style.visibility = "hidden"; castBtn.style.visibility = "hidden";
-                    }
-                }, 400);
+                setTimeout(() => { if(seta.style.opacity === "0") { seta.style.visibility = "hidden"; castBtn.style.visibility = "hidden"; } }, 400);
             }
         }, 5000); 
     }
-
     document.addEventListener('click', gerenciarInterface);
 
-    // --- 3. GESTÃO DE CONTEÚDO E ABAS ---
+    // --- CORREÇÃO DA SEPARAÇÃO DE MÍDIAS ---
     function organizarConteudo(nome, logo, url, grupo) {
         const n = nome.toLowerCase();
         const g = grupo ? grupo.toLowerCase() : "";
         
-        // Identifica Séries
-        if (n.includes('s01') || n.includes('s02') || n.includes('temporada') || g.includes('serie')) {
+        // Verifica se é SÉRIE (pelo grupo ou padrões de nome)
+        if (g.includes('serie') || n.includes('s01') || n.includes('s0') || n.includes('temporada')) {
             categorias.series.push({ nome, logo, url });
         } 
-        // Identifica Filmes
-        else if (g.includes('filmes') || g.includes('vod') || n.includes('2024') || n.includes('2025')) {
+        // Verifica se é FILME (se não for série e tiver tags de filme/vod ou anos recentes)
+        else if (g.includes('filme') || g.includes('vod') || g.includes('cinema') || n.includes('2024') || n.includes('2025')) {
             categorias.filmes.push({ nome, logo, url });
         } 
-        // Identifica Canais de TV
+        // Caso contrário, cai em TV
         else {
             categorias.tv.push({ nome, logo, url });
         }
@@ -186,7 +178,7 @@
 
             for (let i = 0; i < lines.length; i++) {
                 if (lines[i].includes('#EXTINF')) {
-                    const nome = lines[i].split(',')[1] || "Sem Nome";
+                    const nome = lines[i].split(',')[1]?.trim() || "Sem Nome";
                     const logo = lines[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
                     const grupo = lines[i].match(/group-title="([^"]+)"/)?.[1] || "";
                     const url = lines[i+1]?.trim();
@@ -204,11 +196,19 @@
         abaAtual = tipo;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        document.getElementById('search-input').value = ""; // Limpa busca ao trocar aba
         renderizar();
     }
 
-    function renderizar() {
-        const lista = categorias[abaAtual];
+    // Função de Busca
+    function filtrarConteudo() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        const itens = categorias[abaAtual].filter(c => c.nome.toLowerCase().includes(termo));
+        renderizar(itens);
+    }
+
+    function renderizar(dadosOpcionais = null) {
+        const lista = dadosOpcionais || categorias[abaAtual];
         document.getElementById('itens-canais').innerHTML = lista.map(c => `
             <div class="canal-item" onclick="tocarDireto('${c.url}', '${c.nome}', event)">
                 <img src="${c.logo}" class="canal-logo" onerror="this.src='https://via.placeholder.com/45'">
@@ -221,17 +221,13 @@
         if(e) e.stopPropagation();
         currentUrl = url;
         currentTitle = nome;
-
         if (Hls.isSupported()) {
             hls.destroy();
             hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play();
-                enviarParaTV(url, nome); 
-            });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play(); enviarParaTV(url, nome); });
+        } else {
             video.src = url;
             video.play();
             enviarParaTV(url, nome);
