@@ -2,133 +2,94 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>Painel VidYou - Emissor</title>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, #4b0082, #ff4500); border-bottom: 2px solid #ff4500; z-index: 100; }
-        #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-        #setaPop { position: absolute; top: 20px; left: 20px; z-index: 9999; width: 55px; height: 55px; border-radius: 50%; background: #ff4500; color: #fff; border: 2px solid #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px #ff4500; }
-        #gaveta { position: absolute; top: 0; left: -310px; width: 300px; height: 100%; background: rgba(10, 10, 10, 0.98); z-index: 10000; transition: 0.4s; border-right: 3px solid #ff4500; display: flex; flex-direction: column; }
-        #gaveta.ativa { left: 0; }
-        .fechar-btn { padding: 15px; background: #ff4500; color: #000; font-weight: bold; text-align: center; cursor: pointer; }
-        .search-box { padding: 10px; }
-        #search-input { width: 100%; padding: 12px; border-radius: 25px; border: 1px solid #ff4500; background: #000; color: #fff; outline: none; box-sizing: border-box; }
-        .tabs { display: flex; background: #1a1a1a; }
-        .tab-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
-        .tab-btn.active { color: #ff4500; border-bottom: 2px solid #ff4500; background: #222; }
-        #lista-itens { flex: 1; overflow-y: auto; }
-        .item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-        .item img { width: 50px; height: 50px; object-fit: contain; background: #111; border-radius: 5px; }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; }
+        .painel { width: 90%; max-width: 400px; background: #1a1a1a; padding: 25px; border-radius: 12px; border: 2px solid #ff4500; box-shadow: 0 0 15px #ff450044; }
+        h1 { color: #ff4500; text-align: center; font-size: 1.4rem; margin-bottom: 25px; text-transform: uppercase; }
+        label { font-size: 0.75rem; color: #ff4500; font-weight: bold; margin-bottom: 5px; display: block; }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 15px; background: #000; border: 1px solid #333; color: #fff; border-radius: 6px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: #ff4500; }
+        button { width: 100%; padding: 15px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 5px; font-size: 1rem; }
+        #msg { text-align: center; margin-top: 15px; font-weight: bold; min-height: 20px; }
     </style>
 </head>
 <body>
-
-<header>
-    <div style="font-weight: 900;">VIDYOU <span style="color:#000">PRO</span></div>
-</header>
-
-<div id="player-wrapper">
-    <video id="vid" autoplay playsinline></video>
-    <button id="setaPop" onclick="abrirMenu()">▼</button>
+<div class="painel">
+    <h1>EMISSOR VIDYOU PRO</h1>
     
-    <div id="gaveta">
-        <div class="fechar-btn" onclick="fecharMenu()">FECHAR MENU X</div>
-        <div class="search-box">
-            <input type="text" id="search-input" placeholder="🔍 Pesquisar..." oninput="filtrar()">
-        </div>
-        <div class="tabs">
-            <button class="tab-btn active" id="btn-tv" onclick="mudarAba('tv')">TV</button>
-            <button class="tab-btn" id="btn-filmes" onclick="mudarAba('filmes')">FILMES</button>
-            <button class="tab-btn" id="btn-series" onclick="mudarAba('series')">SÉRIES</button>
-        </div>
-        <div id="lista-itens"></div>
-    </div>
+    <label>ID DE ACESSO</label>
+    <input type="password" id="acessoID" value="netchaveapi">
+
+    <label>GITHUB TOKEN (NOVO)</label>
+    <input type="text" id="ghToken" placeholder="Cole seu novo ghp_ aqui">
+
+    <label>REPOSITÓRIO</label>
+    <input type="text" id="ghRepo" value="roneiltonsouza/vidyou-iptv">
+
+    <label>LINK DA LISTA M3U</label>
+    <textarea id="m3uLink" rows="4" placeholder="Cole o link da lista M3U"></textarea>
+
+    <button onclick="atualizar()">ATUALIZAR SISTEMA</button>
+    <div id="msg"></div>
 </div>
 
 <script>
-    const URL_LISTA = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    const video = document.getElementById('vid');
-    let hls = new Hls();
-    let categorias = { tv: [], filmes: [], series: [] };
-    let abaAtual = 'tv';
+    async function atualizar() {
+        const acesso = document.getElementById('acessoID').value;
+        const token = document.getElementById('ghToken').value.trim();
+        const repo = document.getElementById('ghRepo').value;
+        const link = document.getElementById('m3uLink').value.trim();
+        const msg = document.getElementById('msg');
 
-    async function carregarLista() {
+        if (acesso !== "netchaveapi") { 
+            msg.style.color = "red";
+            msg.innerText = "❌ ID INCORRETO!";
+            return;
+        }
+
+        if (!token) {
+            msg.style.color = "orange";
+            msg.innerText = "⚠️ Insira o seu novo Token!";
+            return;
+        }
+
         try {
-            const resTxt = await fetch(URL_LISTA + "?t=" + Date.now());
-            const urlM3u = (await resTxt.text()).trim();
-            const resM3u = await fetch(urlM3u);
-            const data = await resM3u.text();
+            msg.style.color = "#ff4500";
+            msg.innerText = "⏳ Conectando ao GitHub...";
+            const url = `https://api.github.com/repos/${repo}/contents/lista.txt`;
             
-            const linhas = data.split('\n');
-            categorias = { tv: [], filmes: [], series: [] };
-
-            for (let i = 0; i < linhas.length; i++) {
-                if (linhas[i].startsWith('#EXTINF')) {
-                    const nome = linhas[i].split(',')[1]?.trim() || "Sem nome";
-                    const logo = linhas[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
-                    const url = linhas[i+1]?.trim();
-                    
-                    if (url && url.startsWith('http')) {
-                        const n = nome.toLowerCase();
-                        
-                        // CORREÇÃO: Agora ele olha o NOME para decidir a categoria
-                        if (n.includes('serie') || n.includes('s0') || n.includes('temp') || n.includes('capitulo')) {
-                            categorias.series.push({ nome, logo, url });
-                        } 
-                        else if (n.includes('filme') || n.includes('2024') || n.includes('2025') || n.includes('2026')) {
-                            categorias.filmes.push({ nome, logo, url });
-                        } 
-                        else {
-                            categorias.tv.push({ nome, logo, url });
-                        }
-                    }
-                }
+            const res = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+            const data = await res.json();
+            
+            if (res.status === 401) {
+                msg.style.color = "red";
+                msg.innerText = "❌ Token Bloqueado pelo GitHub!";
+                return;
             }
-            renderizar();
-        } catch (e) { console.log("Erro na lista"); }
+
+            const update = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    message: "Update List", 
+                    content: btoa(unescape(encodeURIComponent(link))), 
+                    sha: data.sha 
+                })
+            });
+
+            if (update.ok) {
+                msg.style.color = "#00ff00";
+                msg.innerText = "✅ LISTA SINCRONIZADA!";
+            } else {
+                msg.style.color = "red";
+                msg.innerText = "❌ Erro ao atualizar arquivo.";
+            }
+        } catch (e) { 
+            msg.style.color = "red";
+            msg.innerText = "❌ Falha na comunicação."; 
+        }
     }
-
-    function renderizar(filtro = null) {
-        const itens = filtro || categorias[abaAtual];
-        const container = document.getElementById('lista-itens');
-        container.innerHTML = itens.map(item => `
-            <div class="item" onclick="tocar('${item.url}')">
-                <img src="${item.logo}" onerror="this.src='https://via.placeholder.com/50x50?text=IMG'">
-                <span>${item.nome}</span>
-            </div>
-        `).join('');
-    }
-
-    function mudarAba(aba) {
-        abaAtual = aba;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('btn-' + aba).classList.add('active');
-        document.getElementById('search-input').value = "";
-        renderizar();
-    }
-
-    function filtrar() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        const resultado = categorias[abaAtual].filter(i => i.nome.toLowerCase().includes(termo));
-        renderizar(resultado);
-    }
-
-    function tocar(url) {
-        if (Hls.isSupported()) {
-            hls.destroy(); hls = new Hls();
-            hls.loadSource(url); hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else { video.src = url; video.play(); }
-        fecharMenu();
-    }
-
-    function abrirMenu() { document.getElementById('gaveta').classList.add('ativa'); }
-    function fecharMenu() { document.getElementById('gaveta').classList.remove('ativa'); }
-
-    window.onload = carregarLista;
 </script>
 </body>
 </html>
