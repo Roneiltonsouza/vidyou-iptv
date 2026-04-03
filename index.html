@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VidYou IPTV PRO</title>
+    <title>VidYou IPTV PRO | P2P ENGINE</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clappr@latest/dist/clappr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cdnbye@latest/dist/hlsjs-p2p-engine.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clappr-pip@latest/dist/clappr-pip.min.js"></script>
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     
     <style>
@@ -17,8 +19,9 @@
         }
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
         
+        /* Ajuste do Wrapper para o Clappr */
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        #player-wrapper [data-player] { width: 100% !important; height: 100% !important; }
 
         #setaPop, #castPop {
             position: absolute; top: 20px; z-index: 9999;
@@ -58,7 +61,6 @@
 </header>
 
 <div id="player-wrapper">
-    <video id="vid" autoplay playsinline></video>
     <button id="setaPop" onclick="abrirGaveta(event)">▼</button>
     <div id="castPop"><google-cast-launcher></google-cast-launcher></div>
     
@@ -80,8 +82,7 @@
 
 <script>
     const URL_LISTA = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    const video = document.getElementById('vid');
-    let hls = new Hls();
+    let player; // Instância do Clappr
     let categorias = { tv: [], filmes: [], series: [] };
     let abaAtual = 'tv';
 
@@ -122,12 +123,31 @@
         } catch (e) { console.error("Erro na lista"); }
     }
 
+    function tocar(url) {
+        if (player) player.destroy();
+
+        player = new Clappr.Player({
+            source: url,
+            parentId: "#player-wrapper",
+            width: '100%',
+            height: '100%',
+            autoPlay: true,
+            mimeType: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
+            plugins: [ClapprPip.PipButton, ClapprPip.PipPlugin],
+            playback: {
+                hlsjsConfig: {
+                    enableWorker: true,
+                    p2pConfig: { live: true }
+                }
+            }
+        });
+        fecharGaveta();
+    }
+
     function carregarLocal(e) {
         const file = e.target.files[0];
         if (file) {
-            hls.destroy();
-            video.src = URL.createObjectURL(file);
-            video.play();
+            tocar(URL.createObjectURL(file));
         }
     }
 
@@ -153,15 +173,6 @@
         renderizar();
     }
 
-    function tocar(url) {
-        if (Hls.isSupported()) {
-            hls.destroy(); hls = new Hls();
-            hls.loadSource(url); hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else { video.src = url; video.play(); }
-        fecharGaveta();
-    }
-
     function abrirGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.add('ativa'); }
     function fecharGaveta(e) { if(e) e.stopPropagation(); document.getElementById('gaveta').classList.remove('ativa'); }
     function toggleFS() { if (!document.fullscreenElement) document.getElementById('player-wrapper').requestFullscreen(); else document.exitFullscreen(); }
@@ -169,4 +180,4 @@
     window.onload = carregarLista;
 </script>
 </body>
-</html>
+            </html>
