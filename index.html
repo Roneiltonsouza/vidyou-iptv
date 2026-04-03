@@ -103,14 +103,19 @@
 
             for (let i = 0; i < linhas.length; i++) {
                 if (linhas[i].startsWith('#EXTINF')) {
-                    const nome = linhas[i].split(',')[1]?.trim() || "Sem nome";
-                    const logo = linhas[i].match(/tvg-logo="([^"]+)"/)?.[1] || "";
+                    const info = linhas[i];
+                    const nome = info.split(',')[1]?.trim() || "Sem nome";
+                    const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || "";
+                    const grupo = info.match(/group-title="([^"]+)"/)?.[1] || ""; // Captura o group-title
                     const url = linhas[i+1]?.trim();
+
                     if (url && url.startsWith('http')) {
-                        const n = nome.toLowerCase();
-                        if (n.includes('serie') || n.includes('série') || n.includes('s0') || n.includes('temp')) {
+                        const g = grupo.toLowerCase();
+                        
+                        // Organiza baseado no group-title da lista
+                        if (g.includes('kids')) {
                             categorias.series.push({ nome, logo, url });
-                        } else if (n.includes('filme') || n.includes('2024') || n.includes('2025') || n.includes('2026') || n.includes('vod')) {
+                        } else if (g.includes('variedades')) {
                             categorias.filmes.push({ nome, logo, url });
                         } else {
                             categorias.tv.push({ nome, logo, url });
@@ -124,7 +129,6 @@
 
     function tocar(url) {
         if (player) player.destroy();
-
         player = new Clappr.Player({
             source: url,
             parentId: "#player-wrapper",
@@ -134,20 +138,10 @@
             mimeType: url.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
             plugins: [ClapprPip.PipButton, ClapprPip.PipPlugin],
             playback: {
-                hlsjsConfig: {
-                    enableWorker: true,
-                    p2pConfig: { live: true }
-                }
+                hlsjsConfig: { enableWorker: true, p2pConfig: { live: true } }
             }
         });
         fecharGaveta();
-    }
-
-    function carregarLocal(e) {
-        const file = e.target.files[0];
-        if (file) {
-            tocar(URL.createObjectURL(file));
-        }
     }
 
     function renderizar(filtro = null) {
@@ -175,6 +169,7 @@
     function abrirGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.add('ativa'); }
     function fecharGaveta(e) { if(e) e.stopPropagation(); document.getElementById('gaveta').classList.remove('ativa'); }
     function toggleFS() { if (!document.fullscreenElement) document.getElementById('player-wrapper').requestFullscreen(); else document.exitFullscreen(); }
+    function carregarLocal(e) { const file = e.target.files[0]; if (file) tocar(URL.createObjectURL(file)); }
 
     window.onload = carregarLista;
 </script>
