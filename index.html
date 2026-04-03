@@ -19,7 +19,6 @@
         }
         .btn-header { background: #000; border: 1px solid #ff4500; color: #ff4500; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
         
-        /* Ajuste do Wrapper para o Clappr */
         #player-wrapper { position: relative; width: 100%; flex: 1; background: #000; overflow: hidden; }
         #player-wrapper [data-player] { width: 100% !important; height: 100% !important; }
 
@@ -42,7 +41,7 @@
         #search-input { width: 100%; padding: 12px; border-radius: 25px; border: 1px solid #ff4500; background: #000; color: #fff; box-sizing: border-box; outline: none; }
 
         .tabs-container { display: flex; background: #1a1a1a; }
-        .tab-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.65rem; border-bottom: 2px solid transparent; }
+        .tab-btn { flex: 1; padding: 15px 5px; border: none; background: none; color: #888; cursor: pointer; font-weight: bold; font-size: 0.60rem; border-bottom: 2px solid transparent; text-transform: uppercase; }
         .tab-btn.active { color: #ff4500; border-bottom: 2px solid #ff4500; background: #222; }
 
         #lista-itens { flex: 1; overflow-y: auto; padding-bottom: 20px; }
@@ -70,9 +69,9 @@
             <input type="text" id="search-input" placeholder="🔍 Pesquisar..." oninput="filtrar()">
         </div>
         <div class="tabs-container">
-            <button class="tab-btn active" id="btn-tv" onclick="mudarAba('tv')">TV</button>
-            <button class="tab-btn" id="btn-filmes" onclick="mudarAba('filmes')">FILMES</button>
-            <button class="tab-btn" id="btn-series" onclick="mudarAba('series')">SÉRIES</button>
+            <button class="tab-btn active" id="btn-tv" onclick="mudarAba('tv')">Vidyou Tv Aberta</button>
+            <button class="tab-btn" id="btn-filmes" onclick="mudarAba('filmes')">Vidyou Variedades</button>
+            <button class="tab-btn" id="btn-series" onclick="mudarAba('series')">Vidyou Kids</button>
         </div>
         <div id="lista-itens"></div>
     </div>
@@ -82,7 +81,7 @@
 
 <script>
     const URL_LISTA = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
-    let player; // Instância do Clappr
+    let player; 
     let categorias = { tv: [], filmes: [], series: [] };
     let abaAtual = 'tv';
 
@@ -180,4 +179,4 @@
     window.onload = carregarLista;
 </script>
 </body>
-            </html>
+</html>
