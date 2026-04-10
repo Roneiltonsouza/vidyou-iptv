@@ -68,9 +68,9 @@
             <input type="text" id="search-input" placeholder="🔍 Pesquisar..." oninput="filtrar()">
         </div>
         <div class="tabs-container">
-            <button class="tab-btn active" id="btn-tv" onclick="mudarAba('tv')">TV</button>
-            <button class="tab-btn" id="btn-filmes" onclick="mudarAba('filmes')">FILMES</button>
-            <button class="tab-btn" id="btn-series" onclick="mudarAba('series')">SÉRIES</button>
+            <button class="tab-btn active" id="btn-vidyou-tv" onclick="mudarAba('vidyou-tv')">VIDYOU TV</button>
+            <button class="tab-btn" id="btn-vidyou-filmes" onclick="mudarAba('vidyou-filmes')">VIDYOU FILMES</button>
+            <button class="tab-btn" id="btn-vidyou-series" onclick="mudarAba('vidyou-series')">VIDYOU SÉRIES</button>
         </div>
         <div id="lista-itens"></div>
     </div>
@@ -82,10 +82,10 @@
     const URL_LISTA = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
     let hls = new Hls();
-    let categorias = { tv: [], filmes: [], series: [] };
-    let abaAtual = 'tv';
+    // ESTRUTURA DE CATEGORIAS VIDYOU
+    let categorias = { "vidyou-tv": [], "vidyou-filmes": [], "vidyou-series": [] };
+    let abaAtual = 'vidyou-tv';
 
-    // Inicialização correta do Framework Cast
     window.__onGCastApiAvailable = (isAvailable) => {
         if (isAvailable) {
             cast.framework.CastContext.getInstance().setOptions({
@@ -102,7 +102,8 @@
             const resM3u = await fetch(urlM3u);
             const data = await resM3u.text();
             const linhas = data.split('\n');
-            categorias = { tv: [], filmes: [], series: [] };
+            
+            categorias = { "vidyou-tv": [], "vidyou-filmes": [], "vidyou-series": [] };
 
             for (let i = 0; i < linhas.length; i++) {
                 if (linhas[i].startsWith('#EXTINF')) {
@@ -112,26 +113,17 @@
                     if (url && url.startsWith('http')) {
                         const n = nome.toLowerCase();
                         if (n.includes('serie') || n.includes('série') || n.includes('s0') || n.includes('temp')) {
-                            categorias.series.push({ nome, logo, url });
+                            categorias["vidyou-series"].push({ nome, logo, url });
                         } else if (n.includes('filme') || n.includes('2024') || n.includes('2025') || n.includes('2026') || n.includes('vod')) {
-                            categorias.filmes.push({ nome, logo, url });
+                            categorias["vidyou-filmes"].push({ nome, logo, url });
                         } else {
-                            categorias.tv.push({ nome, logo, url });
+                            categorias["vidyou-tv"].push({ nome, logo, url });
                         }
                     }
                 }
             }
             renderizar();
         } catch (e) { console.error("Erro na lista"); }
-    }
-
-    function carregarLocal(e) {
-        const file = e.target.files[0];
-        if (file) {
-            hls.destroy();
-            video.src = URL.createObjectURL(file);
-            video.play();
-        }
     }
 
     function renderizar(filtro = null) {
@@ -144,11 +136,6 @@
         `).join('');
     }
 
-    function filtrar() {
-        const termo = document.getElementById('search-input').value.toLowerCase();
-        renderizar(categorias[abaAtual].filter(i => i.nome.toLowerCase().includes(termo)));
-    }
-
     function mudarAba(aba) {
         abaAtual = aba;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -156,35 +143,42 @@
         renderizar();
     }
 
-    // FUNÇÃO TOCAR CORRIGIDA COM SUPORTE A CAST
+    function filtrar() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        renderizar(categorias[abaAtual].filter(i => i.nome.toLowerCase().includes(termo)));
+    }
+
     function tocar(url, nome) {
         // Player Local
         if (Hls.isSupported()) {
-            hls.destroy(); 
-            hls = new Hls();
-            hls.loadSource(url); 
-            hls.attachMedia(video);
+            hls.destroy(); hls = new Hls();
+            hls.loadSource(url); hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = url; 
-            video.play();
-        }
+        } else { video.src = url; video.play(); }
 
-        // Lógica de Transmissão (Cast)
+        // TRANSMISSÃO GOOGLE CAST (CORRIGIDA)
         const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
         if (castSession) {
             const mediaInfo = new chrome.cast.media.MediaInformation(url, 'application/x-mpegurl');
-            mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
-            mediaInfo.metadata.title = nome;
-            
-            const request = new chrome.cast.media.LoadRequest(mediaInfo);
-            castSession.loadMedia(request).then(
-                () => console.log('Transmitindo: ' + nome),
-                (e) => console.error('Erro ao transmitir', e)
-            );
-        }
+            const metadata = new chrome.cast.media.GenericMediaMetadata();
+            metadata.title = nome;
+            metadata.subtitle = "VidYou PRO";
+            mediaInfo.metadata = metadata;
+            mediaInfo.streamType = chrome.cast.media.StreamType.LIVE;
 
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request);
+        }
         fecharGaveta();
+    }
+
+    function carregarLocal(e) {
+        const file = e.target.files[0];
+        if (file) {
+            hls.destroy();
+            video.src = URL.createObjectURL(file);
+            video.play();
+        }
     }
 
     function abrirGaveta(e) { e.stopPropagation(); document.getElementById('gaveta').classList.add('ativa'); }
