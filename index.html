@@ -85,11 +85,14 @@
     let categorias = { tv: [], filmes: [], series: [] };
     let abaAtual = 'tv';
 
+    // Inicialização correta do Framework Cast
     window.__onGCastApiAvailable = (isAvailable) => {
-        if (isAvailable) cast.framework.CastContext.getInstance().setOptions({
-            receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-        });
+        if (isAvailable) {
+            cast.framework.CastContext.getInstance().setOptions({
+                receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+                autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+            });
+        }
     };
 
     async function carregarLista() {
@@ -134,7 +137,7 @@
     function renderizar(filtro = null) {
         const itens = filtro || categorias[abaAtual];
         document.getElementById('lista-itens').innerHTML = itens.map(item => `
-            <div class="item" onclick="tocar('${item.url}')">
+            <div class="item" onclick="tocar('${item.url}', '${item.nome}')">
                 <img src="${item.logo}" onerror="this.src='https://via.placeholder.com/45'">
                 <span>${item.nome}</span>
             </div>
@@ -153,12 +156,34 @@
         renderizar();
     }
 
-    function tocar(url) {
+    // FUNÇÃO TOCAR CORRIGIDA COM SUPORTE A CAST
+    function tocar(url, nome) {
+        // Player Local
         if (Hls.isSupported()) {
-            hls.destroy(); hls = new Hls();
-            hls.loadSource(url); hls.attachMedia(video);
+            hls.destroy(); 
+            hls = new Hls();
+            hls.loadSource(url); 
+            hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else { video.src = url; video.play(); }
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url; 
+            video.play();
+        }
+
+        // Lógica de Transmissão (Cast)
+        const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+        if (castSession) {
+            const mediaInfo = new chrome.cast.media.MediaInformation(url, 'application/x-mpegurl');
+            mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+            mediaInfo.metadata.title = nome;
+            
+            const request = new chrome.cast.media.LoadRequest(mediaInfo);
+            castSession.loadMedia(request).then(
+                () => console.log('Transmitindo: ' + nome),
+                (e) => console.error('Erro ao transmitir', e)
+            );
+        }
+
         fecharGaveta();
     }
 
