@@ -6,8 +6,8 @@
     <title>VidYou IPTV PRO - V2</title>
     
     <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         header { 
@@ -73,7 +73,7 @@
 </header>
 
 <div id="player-wrapper">
-    <video id="vid" controls playsinline></video>
+    <video id="vid" controls autoplay playsinline></video>
     <button class="seta-canais" id="botaoSeta" onclick="abrirGaveta()">▼</button>
     
     <div id="gaveta">
@@ -125,12 +125,10 @@
     }
 
     function transmitirCanal(urlDoCanal, nomeDoCanal) {
-        if (!castSession) return; // Só transmite se estiver conectado
-
+        if (!castSession) return;
         const mediaInfo = new chrome.cast.media.MediaInfo(urlDoCanal, 'application/x-mpegURL');
         mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
         mediaInfo.metadata.title = nomeDoCanal;
-
         const request = new chrome.cast.media.LoadRequest(mediaInfo);
         castSession.loadMedia(request, 
             () => { console.log("Transmitindo: " + nomeDoCanal); },
@@ -138,7 +136,7 @@
         );
     }
 
-    // --- LÓGICA ORIGINAL DO PLAYER ---
+    // --- LÓGICA DO PLAYER MELHORADO (HLS.JS Otimizado) ---
     const URL_GITHUB = "https://raw.githubusercontent.com/roneiltonsouza/vidyou-iptv/main/lista.txt";
     const video = document.getElementById('vid');
     const wrapper = document.getElementById('player-wrapper');
@@ -151,12 +149,31 @@
 
     function configurarPlayer(url) {
         if (hls) { hls.destroy(); }
+        
         if (url.includes('.m3u8')) {
             if (Hls.isSupported()) {
-                hls = new Hls({ maxBufferLength: 30, lowLatencyMode: true });
+                // Configurações para o player ser "Ainda Melhor":
+                hls = new Hls({
+                    maxBufferLength: 30,      // Buffer de 30 segundos para evitar travas
+                    maxMaxBufferLength: 60,
+                    startLevel: -1,           // Começa na melhor qualidade disponível automaticamente
+                    lowLatencyMode: true,     // Modo baixa latência para TV ao vivo
+                    enableWorker: true        // Usa processamento paralelo para ficar mais leve
+                });
                 hls.loadSource(url);
                 hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+                
+                // Recuperação de erros automática
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                            default: hls.destroy(); break;
+                        }
+                    }
+                });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = url;
                 video.play();
@@ -225,7 +242,7 @@
 
     function tocarDireto(url, nome) {
         configurarPlayer(url);
-        transmitirCanal(url, nome); // ENVIA PARA A TV SE ESTIVER CONECTADO
+        transmitirCanal(url, nome);
         fecharGaveta();
     }
 
@@ -244,10 +261,10 @@
     function fecharGaveta() { document.getElementById('gaveta').classList.remove('ativa'); resetTimer(); }
     function carregarLocal(e) { if (e.target.files[0]) { video.src = URL.createObjectURL(e.target.files[0]); video.play(); } }
 
-    wrapper.addEventListener('click', resetTimer);
+    wrapper.addEventListener('mousemove', resetTimer);
     wrapper.addEventListener('touchstart', resetTimer);
 
     window.onload = () => { buscarLista(); setInterval(buscarLista, 60000); resetTimer(); };
 </script>
 </body>
-    </html>
+</html>
